@@ -1,0 +1,117 @@
+name: Setup C 候選股登記
+description: 登記一檔通過 Setup C 篩選條件的候選股。所有欄位皆為必填，缺一不可。
+labels:
+  - setup-c
+  - screened
+body:
+  - type: markdown
+    attributes:
+      value: |
+        請完整填寫以下欄位。缺少任一必填欄位時，後續 Audit Action 會自動拒絕此 Issue。
+
+  - type: input
+    id: ticker
+    attributes:
+      label: ticker
+      description: 股票代號（例如 2330）
+    validations:
+      required: true
+
+  - type: input
+    id: screen_date
+    attributes:
+      label: screen_date
+      description: 篩選日期，格式 YYYY-MM-DD
+    validations:
+      required: true
+
+  - type: input
+    id: market_cap_b
+    attributes:
+      label: market_cap_b
+      description: 市值，單位「十億台幣」（需大於策略門檻）
+    validations:
+      required: true
+
+  - type: input
+    id: foreign_20d_net
+    attributes:
+      label: foreign_20d_net
+      description: 外資近 20 日合計買賣超，單位「張」（需為負值）
+    validations:
+      required: true
+
+  - type: dropdown
+    id: foreign_recent_3d
+    attributes:
+      label: foreign_recent_3d
+      description: 外資最近 3 日均為買超
+      options:
+        - "true"
+        - "false"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: price_bottom_status
+    attributes:
+      label: price_bottom_status
+      description: 低點是否墊高
+      options:
+        - higher_lows
+        - flat
+        - breaking_down
+    validations:
+      required: true
+
+  - type: dropdown
+    id: entry_day
+    attributes:
+      label: entry_day
+      description: 外資連買第幾天進場
+      options:
+        - "2"
+        - "3"
+        - "4"
+    validations:
+      required: true
+
+  - type: input
+    id: entry_zone
+    attributes:
+      label: entry_zone
+      description: 建議進場區間（例如 975-985）
+    validations:
+      required: true
+
+  - type: input
+    id: stop_loss_price
+    attributes:
+      label: stop_loss_price
+      description: 停損價
+    validations:
+      required: true
+
+  - type: input
+    id: position_size_lots
+    attributes:
+      label: position_size_lots
+      description: 建議張數（1 張 = 1000 股）
+    validations:
+      required: true
+
+  - type: input
+    id: risk_r_pct
+    attributes:
+      label: risk_r_pct
+      description: 本筆風險占總資金 %，需 ≤ 1.0（例如 0.8）
+    validations:
+      required: true
+
+  - type: input
+    id: artifact_run_id
+    attributes:
+      label: artifact_run_id
+      description: 對應的 GitHub Actions Run ID，用於追溯原始數據
+    validations:
+      required: true
