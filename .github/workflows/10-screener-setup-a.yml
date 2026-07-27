@@ -1,0 +1,56 @@
+name: 10 Screener Setup A
+
+on:
+  workflow_run:
+    workflows: ["00 Data Fetch"]
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  screener-setup-a:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Step 1 - Download upstream artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: institutional-data-${{ github.event.workflow_run.id }}
+          path: data/
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Step 2 - Run Setup A screener
+        env:
+          MIN_AVG_VOLUME_M: ${{ vars.MIN_AVG_VOLUME_M || '500' }}
+          MAX_CANDIDATES_PER_RUN: ${{ vars.MAX_CANDIDATES_PER_RUN || '5' }}
+        run: |
+          python scripts/screener/setup_a.py
+
+      - name: Step 3 - Create GitHub Issues
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_PROJECT_NUMBER: ${{ vars.GH_PROJECT_NUMBER }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: |
+          python scripts/screener/create_issues.py data/screener/screener_result_a_*.json
+
+      - name: Step 4 - Upload screener artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: screener-a-${{ github.run_id }}
+          path: data/screener/
+          retention-days: 90
