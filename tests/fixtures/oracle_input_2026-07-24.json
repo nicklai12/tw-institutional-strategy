@@ -1,0 +1,1086 @@
+{
+  "date": "2026-07-24",
+  "source": "TWSE T86 + STOCK_DAY API",
+  "stocks": [
+    {
+      "ticker": "2884",
+      "name": "玉山金",
+      "foreign_5d_net": 54981.56,
+      "trust_5d_net": 3617.23,
+      "close": 35.95,
+      "ma20": 34.81,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 1766250.14
+    },
+    {
+      "ticker": "2891",
+      "name": "中信金",
+      "foreign_5d_net": 8708.56,
+      "trust_5d_net": 6135.55,
+      "close": 63.6,
+      "ma20": 67.05,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 3635654.32
+    },
+    {
+      "ticker": "3231",
+      "name": "緯創",
+      "foreign_5d_net": 154948.46,
+      "trust_5d_net": 7278.74,
+      "close": 179.0,
+      "ma20": 153.7,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 8530931.37
+    },
+    {
+      "ticker": "2412",
+      "name": "中華電",
+      "foreign_5d_net": 30004.02,
+      "trust_5d_net": 1233.3,
+      "close": 139.0,
+      "ma20": 138.62,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 3000951.7
+    },
+    {
+      "ticker": "2382",
+      "name": "廣達",
+      "foreign_5d_net": 6258.33,
+      "trust_5d_net": 4071.68,
+      "close": 328.0,
+      "ma20": 358.3,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 7146755.8
+    },
+    {
+      "ticker": "5880",
+      "name": "合庫金",
+      "foreign_5d_net": 16331.55,
+      "trust_5d_net": 78.23,
+      "close": 25.65,
+      "ma20": 25.16,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 451822.21
+    },
+    {
+      "ticker": "5871",
+      "name": "中租-KY",
+      "foreign_5d_net": 2739.24,
+      "trust_5d_net": 12383.29,
+      "close": 120.0,
+      "ma20": 117.75,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 1065116.7
+    },
+    {
+      "ticker": "00631L",
+      "name": "元大台灣50正2",
+      "foreign_5d_net": 61713.0,
+      "trust_5d_net": 40.0,
+      "close": 33.5,
+      "ma20": 36.29,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 11090027.2
+    },
+    {
+      "ticker": "2881",
+      "name": "富邦金",
+      "foreign_5d_net": 8394.79,
+      "trust_5d_net": 8172.22,
+      "close": 127.5,
+      "ma20": 125.5,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 4055205.04
+    },
+    {
+      "ticker": "2317",
+      "name": "鴻海",
+      "foreign_5d_net": 58615.74,
+      "trust_5d_net": 3846.19,
+      "close": 252.5,
+      "ma20": 242.85,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 12648466.58
+    },
+    {
+      "ticker": "1402",
+      "name": "遠東新",
+      "foreign_5d_net": 36393.13,
+      "trust_5d_net": 5402.41,
+      "close": 27.35,
+      "ma20": 27.86,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 669262.89
+    },
+    {
+      "ticker": "2883",
+      "name": "凱基金",
+      "foreign_5d_net": 78051.55,
+      "trust_5d_net": 3713.41,
+      "close": 30.65,
+      "ma20": 29.7,
+      "ma20_direction": "flat",
+      "avg_volume_20d": 1934376.33
+    },
+    {
+      "ticker": "2489",
+      "name": "瑞軒",
+      "foreign_5d_net": 2352.47,
+      "trust_5d_net": 7.0,
+      "close": 30.1,
+      "ma20": 37.1,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 435000.47
+    },
+    {
+      "ticker": "2634",
+      "name": "漢翔",
+      "foreign_5d_net": 4568.15,
+      "trust_5d_net": 1438.0,
+      "close": 65.4,
+      "ma20": 60.9,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 3955063.99
+    },
+    {
+      "ticker": "2615",
+      "name": "萬海",
+      "foreign_5d_net": 30142.17,
+      "trust_5d_net": 433.7,
+      "close": 87.0,
+      "ma20": 80.7,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 880377.49
+    },
+    {
+      "ticker": "4763",
+      "name": "材料*-KY",
+      "foreign_5d_net": 5970.18,
+      "trust_5d_net": 732.07,
+      "close": 50.4,
+      "ma20": 48.28,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 596528.01
+    },
+    {
+      "ticker": "5522",
+      "name": "遠雄",
+      "foreign_5d_net": 1662.27,
+      "trust_5d_net": 158.0,
+      "close": 65.9,
+      "ma20": 65.79,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 83132.92
+    },
+    {
+      "ticker": "2377",
+      "name": "微星",
+      "foreign_5d_net": 7161.55,
+      "trust_5d_net": 4098.38,
+      "close": 146.5,
+      "ma20": 144.35,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 2738510.48
+    },
+    {
+      "ticker": "3037",
+      "name": "欣興",
+      "foreign_5d_net": 3597.05,
+      "trust_5d_net": 3405.41,
+      "close": 839.0,
+      "ma20": 905.5,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 29475619.22
+    },
+    {
+      "ticker": "9945",
+      "name": "潤泰新",
+      "foreign_5d_net": 7448.83,
+      "trust_5d_net": 21.0,
+      "close": 26.1,
+      "ma20": 26.31,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 218709.65
+    },
+    {
+      "ticker": "2375",
+      "name": "凱美",
+      "foreign_5d_net": 718.45,
+      "trust_5d_net": 234.0,
+      "close": 131.0,
+      "ma20": 179.32,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 2522052.54
+    },
+    {
+      "ticker": "3706",
+      "name": "神達",
+      "foreign_5d_net": 6783.74,
+      "trust_5d_net": 5980.0,
+      "close": 91.3,
+      "ma20": 89.58,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 1799025.69
+    },
+    {
+      "ticker": "6278",
+      "name": "台表科",
+      "foreign_5d_net": 541.04,
+      "trust_5d_net": 91.0,
+      "close": 159.5,
+      "ma20": 185.97,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 1386951.82
+    },
+    {
+      "ticker": "2371",
+      "name": "大同",
+      "foreign_5d_net": 4075.95,
+      "trust_5d_net": 8.0,
+      "close": 25.8,
+      "ma20": 27.0,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 273084.18
+    },
+    {
+      "ticker": "2312",
+      "name": "金寶",
+      "foreign_5d_net": 5950.16,
+      "trust_5d_net": 110.0,
+      "close": 31.85,
+      "ma20": 33.58,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 813969.17
+    },
+    {
+      "ticker": "2646",
+      "name": "星宇航空",
+      "foreign_5d_net": 1723.62,
+      "trust_5d_net": 40.0,
+      "close": 21.15,
+      "ma20": 21.26,
+      "ma20_direction": "flat",
+      "avg_volume_20d": 117122.18
+    },
+    {
+      "ticker": "2455",
+      "name": "全新",
+      "foreign_5d_net": 315.27,
+      "trust_5d_net": 650.0,
+      "close": 333.0,
+      "ma20": 327.3,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 2109373.26
+    },
+    {
+      "ticker": "3673",
+      "name": "TPK-KY",
+      "foreign_5d_net": 712.35,
+      "trust_5d_net": 8.0,
+      "close": 62.7,
+      "ma20": 73.44,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 723672.82
+    },
+    {
+      "ticker": "2454",
+      "name": "聯發科",
+      "foreign_5d_net": 505.2,
+      "trust_5d_net": 207.86,
+      "close": 3750.0,
+      "ma20": 3888.25,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 40389746.95
+    },
+    {
+      "ticker": "1434",
+      "name": "福懋",
+      "foreign_5d_net": 1377.53,
+      "trust_5d_net": 13.0,
+      "close": 19.15,
+      "ma20": 18.36,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 206793.71
+    },
+    {
+      "ticker": "9917",
+      "name": "中保科",
+      "foreign_5d_net": 816.44,
+      "trust_5d_net": 226.0,
+      "close": 110.0,
+      "ma20": 106.97,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 76193.38
+    },
+    {
+      "ticker": "2233",
+      "name": "宇隆",
+      "foreign_5d_net": 367.69,
+      "trust_5d_net": 135.0,
+      "close": 203.5,
+      "ma20": 230.18,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 291931.06
+    },
+    {
+      "ticker": "2374",
+      "name": "佳能",
+      "foreign_5d_net": 929.25,
+      "trust_5d_net": 2.0,
+      "close": 67.5,
+      "ma20": 72.43,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 319107.08
+    },
+    {
+      "ticker": "5243",
+      "name": "乙盛-KY",
+      "foreign_5d_net": 325.97,
+      "trust_5d_net": 100.0,
+      "close": 86.7,
+      "ma20": 95.9,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 164317.74
+    },
+    {
+      "ticker": "9933",
+      "name": "中鼎",
+      "foreign_5d_net": 3388.26,
+      "trust_5d_net": 0.1,
+      "close": 40.05,
+      "ma20": 40.72,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 106323.72
+    },
+    {
+      "ticker": "3013",
+      "name": "晟銘電",
+      "foreign_5d_net": 343.97,
+      "trust_5d_net": 4.0,
+      "close": 85.0,
+      "ma20": 99.03,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 147207.27
+    },
+    {
+      "ticker": "6155",
+      "name": "鈞寶",
+      "foreign_5d_net": 145.84,
+      "trust_5d_net": 159.0,
+      "close": 55.7,
+      "ma20": 72.69,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 336945.11
+    },
+    {
+      "ticker": "8261",
+      "name": "富鼎",
+      "foreign_5d_net": 1419.44,
+      "trust_5d_net": 192.0,
+      "close": 217.0,
+      "ma20": 284.18,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 3079116.35
+    },
+    {
+      "ticker": "6531",
+      "name": "愛普*",
+      "foreign_5d_net": 557.68,
+      "trust_5d_net": 202.15,
+      "close": 858.0,
+      "ma20": 915.2,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 3012452.1
+    },
+    {
+      "ticker": "3703",
+      "name": "欣陸",
+      "foreign_5d_net": 998.32,
+      "trust_5d_net": 1.0,
+      "close": 20.8,
+      "ma20": 20.81,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 20503.64
+    },
+    {
+      "ticker": "6789",
+      "name": "采鈺",
+      "foreign_5d_net": 1158.86,
+      "trust_5d_net": 13.0,
+      "close": 470.0,
+      "ma20": 504.18,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 1136291.92
+    },
+    {
+      "ticker": "2428",
+      "name": "興勤",
+      "foreign_5d_net": 94.91,
+      "trust_5d_net": 299.0,
+      "close": 241.0,
+      "ma20": 291.55,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 688990.55
+    },
+    {
+      "ticker": "6525",
+      "name": "捷敏-KY",
+      "foreign_5d_net": 2155.13,
+      "trust_5d_net": 138.98,
+      "close": 141.5,
+      "ma20": 172.0,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 912657.44
+    },
+    {
+      "ticker": "2543",
+      "name": "皇昌",
+      "foreign_5d_net": 557.13,
+      "trust_5d_net": 4.0,
+      "close": 38.6,
+      "ma20": 38.89,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 43626.55
+    },
+    {
+      "ticker": "2498",
+      "name": "宏達電",
+      "foreign_5d_net": 1054.28,
+      "trust_5d_net": 1.0,
+      "close": 41.75,
+      "ma20": 43.33,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 257507.65
+    },
+    {
+      "ticker": "1519",
+      "name": "華城",
+      "foreign_5d_net": 757.94,
+      "trust_5d_net": 2.23,
+      "close": 697.0,
+      "ma20": 728.1,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 1362530.77
+    },
+    {
+      "ticker": "1795",
+      "name": "美時",
+      "foreign_5d_net": 103.07,
+      "trust_5d_net": 5.0,
+      "close": 185.0,
+      "ma20": 195.03,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 491431.81
+    },
+    {
+      "ticker": "6669",
+      "name": "緯穎",
+      "foreign_5d_net": 747.38,
+      "trust_5d_net": 756.18,
+      "close": 5730.0,
+      "ma20": 5010.75,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 9330233.96
+    },
+    {
+      "ticker": "4722",
+      "name": "國精化",
+      "foreign_5d_net": 146.04,
+      "trust_5d_net": 1.0,
+      "close": 202.5,
+      "ma20": 254.35,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 421187.39
+    },
+    {
+      "ticker": "6781",
+      "name": "AES-KY",
+      "foreign_5d_net": 166.11,
+      "trust_5d_net": 15.0,
+      "close": 989.0,
+      "ma20": 1093.2,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 1252676.16
+    },
+    {
+      "ticker": "1707",
+      "name": "葡萄王",
+      "foreign_5d_net": 77.53,
+      "trust_5d_net": 72.0,
+      "close": 91.5,
+      "ma20": 91.91,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 52858.3
+    },
+    {
+      "ticker": "5515",
+      "name": "建國",
+      "foreign_5d_net": 640.34,
+      "trust_5d_net": 4.0,
+      "close": 43.55,
+      "ma20": 41.51,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 21726.98
+    },
+    {
+      "ticker": "1102",
+      "name": "亞泥",
+      "foreign_5d_net": 8175.03,
+      "trust_5d_net": 252.48,
+      "close": 32.75,
+      "ma20": 34.64,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 744565.77
+    },
+    {
+      "ticker": "00965",
+      "name": "元大航太防衛科技",
+      "foreign_5d_net": 479.12,
+      "trust_5d_net": 30.0,
+      "close": 25.08,
+      "ma20": 24.92,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 54141.96
+    },
+    {
+      "ticker": "2206",
+      "name": "三陽工業",
+      "foreign_5d_net": 205.14,
+      "trust_5d_net": 421.0,
+      "close": 61.4,
+      "ma20": 62.84,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 99252.1
+    },
+    {
+      "ticker": "5469",
+      "name": "瀚宇博",
+      "foreign_5d_net": 565.08,
+      "trust_5d_net": 3.0,
+      "close": 72.0,
+      "ma20": 79.48,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 438150.66
+    },
+    {
+      "ticker": "00652",
+      "name": "富邦印度",
+      "foreign_5d_net": 85.0,
+      "trust_5d_net": 100.0,
+      "close": 32.55,
+      "ma20": 33.23,
+      "ma20_direction": "flat",
+      "avg_volume_20d": 11589.48
+    },
+    {
+      "ticker": "2023",
+      "name": "燁輝",
+      "foreign_5d_net": 1192.12,
+      "trust_5d_net": 24.0,
+      "close": 13.95,
+      "ma20": 13.78,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 29805.85
+    },
+    {
+      "ticker": "2637",
+      "name": "慧洋-KY",
+      "foreign_5d_net": 1383.7,
+      "trust_5d_net": 1494.66,
+      "close": 83.8,
+      "ma20": 78.9,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 256696.43
+    },
+    {
+      "ticker": "9939",
+      "name": "宏全",
+      "foreign_5d_net": 174.66,
+      "trust_5d_net": 370.98,
+      "close": 129.5,
+      "ma20": 126.22,
+      "ma20_direction": "flat",
+      "avg_volume_20d": 271752.28
+    },
+    {
+      "ticker": "6526",
+      "name": "達發",
+      "foreign_5d_net": 307.96,
+      "trust_5d_net": 14.0,
+      "close": 587.0,
+      "ma20": 636.95,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 448816.01
+    },
+    {
+      "ticker": "9935",
+      "name": "慶豐富",
+      "foreign_5d_net": 460.38,
+      "trust_5d_net": 43.78,
+      "close": 19.4,
+      "ma20": 19.09,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 11584.43
+    },
+    {
+      "ticker": "2010",
+      "name": "春源",
+      "foreign_5d_net": 640.5,
+      "trust_5d_net": 14.0,
+      "close": 21.1,
+      "ma20": 21.74,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 37042.33
+    },
+    {
+      "ticker": "1307",
+      "name": "三芳",
+      "foreign_5d_net": 545.82,
+      "trust_5d_net": 177.29,
+      "close": 32.3,
+      "ma20": 33.1,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 37357.65
+    },
+    {
+      "ticker": "2501",
+      "name": "國建",
+      "foreign_5d_net": 507.21,
+      "trust_5d_net": 46.0,
+      "close": 22.75,
+      "ma20": 23.37,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 84841.16
+    },
+    {
+      "ticker": "2423",
+      "name": "固緯",
+      "foreign_5d_net": 213.28,
+      "trust_5d_net": 3.0,
+      "close": 73.9,
+      "ma20": 76.07,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 20345.0
+    },
+    {
+      "ticker": "6189",
+      "name": "豐藝",
+      "foreign_5d_net": 295.19,
+      "trust_5d_net": 10.08,
+      "close": 48.95,
+      "ma20": 50.06,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 44002.58
+    },
+    {
+      "ticker": "2458",
+      "name": "義隆",
+      "foreign_5d_net": 336.46,
+      "trust_5d_net": 644.15,
+      "close": 168.0,
+      "ma20": 177.5,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 1332363.83
+    },
+    {
+      "ticker": "2727",
+      "name": "王品",
+      "foreign_5d_net": 315.76,
+      "trust_5d_net": 1.0,
+      "close": 220.5,
+      "ma20": 235.3,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 152789.1
+    },
+    {
+      "ticker": "6177",
+      "name": "達麗",
+      "foreign_5d_net": 645.38,
+      "trust_5d_net": 256.19,
+      "close": 48.55,
+      "ma20": 46.49,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 58984.12
+    },
+    {
+      "ticker": "3583",
+      "name": "辛耘",
+      "foreign_5d_net": 160.48,
+      "trust_5d_net": 14.0,
+      "close": 715.0,
+      "ma20": 810.45,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 1277559.46
+    },
+    {
+      "ticker": "1419",
+      "name": "新紡",
+      "foreign_5d_net": 10.0,
+      "trust_5d_net": 6.0,
+      "close": 66.7,
+      "ma20": 66.15,
+      "ma20_direction": "flat",
+      "avg_volume_20d": 9971.97
+    },
+    {
+      "ticker": "2207",
+      "name": "和泰車",
+      "foreign_5d_net": 86.6,
+      "trust_5d_net": 62.23,
+      "close": 493.5,
+      "ma20": 480.27,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 196680.14
+    },
+    {
+      "ticker": "3596",
+      "name": "智易",
+      "foreign_5d_net": 843.33,
+      "trust_5d_net": 0.78,
+      "close": 185.0,
+      "ma20": 189.7,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 262424.87
+    },
+    {
+      "ticker": "8341",
+      "name": "日友",
+      "foreign_5d_net": 178.6,
+      "trust_5d_net": 2.0,
+      "close": 77.0,
+      "ma20": 76.39,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 20427.1
+    },
+    {
+      "ticker": "6589",
+      "name": "台康生技",
+      "foreign_5d_net": 203.5,
+      "trust_5d_net": 2.0,
+      "close": 45.6,
+      "ma20": 47.64,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 56801.48
+    },
+    {
+      "ticker": "9958",
+      "name": "世紀鋼",
+      "foreign_5d_net": 28.53,
+      "trust_5d_net": 274.0,
+      "close": 110.5,
+      "ma20": 115.75,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 247238.33
+    },
+    {
+      "ticker": "8114",
+      "name": "振樺電",
+      "foreign_5d_net": 2090.8,
+      "trust_5d_net": 225.0,
+      "close": 230.0,
+      "ma20": 200.07,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 235915.35
+    },
+    {
+      "ticker": "5288",
+      "name": "豐祥-KY",
+      "foreign_5d_net": 97.86,
+      "trust_5d_net": 76.0,
+      "close": 194.0,
+      "ma20": 186.2,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 33072.84
+    },
+    {
+      "ticker": "8454",
+      "name": "富邦媒",
+      "foreign_5d_net": 397.17,
+      "trust_5d_net": 55.83,
+      "close": 238.5,
+      "ma20": 270.75,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 378973.44
+    },
+    {
+      "ticker": "6579",
+      "name": "研揚",
+      "foreign_5d_net": 252.79,
+      "trust_5d_net": 2.0,
+      "close": 180.5,
+      "ma20": 163.18,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 192875.56
+    },
+    {
+      "ticker": "4770",
+      "name": "上品",
+      "foreign_5d_net": 493.14,
+      "trust_5d_net": 141.0,
+      "close": 227.5,
+      "ma20": 218.47,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 83844.62
+    },
+    {
+      "ticker": "2015",
+      "name": "豐興",
+      "foreign_5d_net": 156.83,
+      "trust_5d_net": 4.0,
+      "close": 63.8,
+      "ma20": 62.52,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 18712.75
+    },
+    {
+      "ticker": "6605",
+      "name": "帝寶",
+      "foreign_5d_net": 131.53,
+      "trust_5d_net": 2.0,
+      "close": 132.5,
+      "ma20": 132.85,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 85333.44
+    },
+    {
+      "ticker": "6183",
+      "name": "關貿",
+      "foreign_5d_net": 22.5,
+      "trust_5d_net": 3.0,
+      "close": 91.8,
+      "ma20": 90.32,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 2769.93
+    },
+    {
+      "ticker": "4736",
+      "name": "泰博",
+      "foreign_5d_net": 117.31,
+      "trust_5d_net": 1.0,
+      "close": 129.5,
+      "ma20": 126.83,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 21989.48
+    },
+    {
+      "ticker": "2477",
+      "name": "美隆電",
+      "foreign_5d_net": 29.7,
+      "trust_5d_net": 41.53,
+      "close": 21.3,
+      "ma20": 21.46,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 4598.85
+    },
+    {
+      "ticker": "2059",
+      "name": "川湖",
+      "foreign_5d_net": 181.07,
+      "trust_5d_net": 147.36,
+      "close": 7735.0,
+      "ma20": 7914.5,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 4749031.49
+    },
+    {
+      "ticker": "2387",
+      "name": "精元",
+      "foreign_5d_net": 132.31,
+      "trust_5d_net": 135.01,
+      "close": 38.85,
+      "ma20": 39.45,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 23291.43
+    },
+    {
+      "ticker": "2597",
+      "name": "潤弘",
+      "foreign_5d_net": 0.1,
+      "trust_5d_net": 1.95,
+      "close": 161.0,
+      "ma20": 165.07,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 54948.34
+    },
+    {
+      "ticker": "6206",
+      "name": "飛捷",
+      "foreign_5d_net": 1647.17,
+      "trust_5d_net": 162.46,
+      "close": 134.0,
+      "ma20": 127.45,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 176771.16
+    },
+    {
+      "ticker": "5607",
+      "name": "遠雄港",
+      "foreign_5d_net": 0.35,
+      "trust_5d_net": 4.0,
+      "close": 49.8,
+      "ma20": 50.54,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 20994.06
+    },
+    {
+      "ticker": "00646",
+      "name": "元大S&P500",
+      "foreign_5d_net": 1432.9,
+      "trust_5d_net": 540.0,
+      "close": 75.5,
+      "ma20": 75.62,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 206121.95
+    },
+    {
+      "ticker": "6196",
+      "name": "帆宣",
+      "foreign_5d_net": 222.28,
+      "trust_5d_net": 62.0,
+      "close": 526.0,
+      "ma20": 553.65,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 1069321.13
+    },
+    {
+      "ticker": "2031",
+      "name": "新光鋼",
+      "foreign_5d_net": 755.07,
+      "trust_5d_net": 89.81,
+      "close": 40.15,
+      "ma20": 39.07,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 30883.6
+    },
+    {
+      "ticker": "2354",
+      "name": "鴻準",
+      "foreign_5d_net": 3255.86,
+      "trust_5d_net": 27.0,
+      "close": 57.1,
+      "ma20": 55.96,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 315002.4
+    },
+    {
+      "ticker": "1609",
+      "name": "大亞",
+      "foreign_5d_net": 101.88,
+      "trust_5d_net": 3.0,
+      "close": 36.85,
+      "ma20": 38.54,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 427880.02
+    },
+    {
+      "ticker": "2547",
+      "name": "日勝生",
+      "foreign_5d_net": 369.34,
+      "trust_5d_net": 445.55,
+      "close": 10.1,
+      "ma20": 10.91,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 45558.6
+    },
+    {
+      "ticker": "2605",
+      "name": "新興",
+      "foreign_5d_net": 2576.59,
+      "trust_5d_net": 23.0,
+      "close": 32.3,
+      "ma20": 30.61,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 186443.5
+    },
+    {
+      "ticker": "2027",
+      "name": "大成鋼",
+      "foreign_5d_net": 27726.26,
+      "trust_5d_net": 3510.25,
+      "close": 43.55,
+      "ma20": 41.08,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 705114.26
+    },
+    {
+      "ticker": "2006",
+      "name": "東和鋼鐵",
+      "foreign_5d_net": 2053.79,
+      "trust_5d_net": 1062.16,
+      "close": 71.8,
+      "ma20": 70.02,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 206979.01
+    },
+    {
+      "ticker": "1605",
+      "name": "華新",
+      "foreign_5d_net": 2796.24,
+      "trust_5d_net": 28.36,
+      "close": 32.85,
+      "ma20": 34.53,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 730532.66
+    },
+    {
+      "ticker": "2897",
+      "name": "王道銀行",
+      "foreign_5d_net": 2703.93,
+      "trust_5d_net": 164.0,
+      "close": 10.15,
+      "ma20": 10.45,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 53827.07
+    },
+    {
+      "ticker": "2812",
+      "name": "台中銀",
+      "foreign_5d_net": 11955.04,
+      "trust_5d_net": 12.42,
+      "close": 20.45,
+      "ma20": 20.35,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 309543.06
+    },
+    {
+      "ticker": "1810",
+      "name": "和成",
+      "foreign_5d_net": 84.88,
+      "trust_5d_net": 8.8,
+      "close": 28.6,
+      "ma20": 25.85,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 683013.35
+    },
+    {
+      "ticker": "0052",
+      "name": "富邦科技",
+      "foreign_5d_net": 11437.53,
+      "trust_5d_net": 1041.0,
+      "close": 59.5,
+      "ma20": 61.59,
+      "ma20_direction": "falling",
+      "avg_volume_20d": 1742142.41
+    },
+    {
+      "ticker": "1326",
+      "name": "台化",
+      "foreign_5d_net": 17145.59,
+      "trust_5d_net": 14.0,
+      "close": 67.5,
+      "ma20": 64.3,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 5258345.94
+    },
+    {
+      "ticker": "1301",
+      "name": "台塑",
+      "foreign_5d_net": 4860.21,
+      "trust_5d_net": 676.9,
+      "close": 62.7,
+      "ma20": 60.02,
+      "ma20_direction": "rising",
+      "avg_volume_20d": 5018825.78
+    }
+  ]
+}
