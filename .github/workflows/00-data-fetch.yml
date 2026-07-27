@@ -1,0 +1,49 @@
+name: 00 Data Fetch
+
+on:
+  schedule:
+    - cron: "30 10 * * 1-5"   # 台灣時間 18:30，UTC 10:30
+  workflow_dispatch:            # 允許手動觸發（測試用）
+
+jobs:
+  data-fetch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pandas
+
+      - name: Step 1 - Guardrail check
+        # TODO: Replace with workflow_call once .github/workflows/99-guardrail-check.yml exists.
+        run: |
+          echo "Guardrail check placeholder: replace with workflow_call to 99-guardrail-check.yml"
+
+      - name: Step 2 - Fetch institutional data
+        run: |
+          python scripts/data/fetch_institutional.py
+
+      - name: Step 3 - Compute rolling metrics
+        run: |
+          python scripts/data/compute_rolling.py
+
+      - name: Step 4 - Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: institutional-data-${{ github.run_id }}
+          path: data/
+          retention-days: 90
+
+      - name: Step 5 - Trigger downstream Screener workflows
+        # TODO: Replace with gh workflow run once Screener workflows exist.
+        run: |
+          echo "Downstream trigger placeholder: replace with workflow_dispatch to Screener workflows"
