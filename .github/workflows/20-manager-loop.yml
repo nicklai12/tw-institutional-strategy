@@ -7,9 +7,13 @@ on:
   workflow_dispatch:
 
 jobs:
+  guardrail:
+    uses: ./.github/workflows/99-guardrail-check.yml
+
   manager-loop:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    needs: guardrail
+    if: ${{ needs.guardrail.outputs.passed == 'true' || github.event_name == 'workflow_dispatch' }}
 
     steps:
       - name: Checkout repository

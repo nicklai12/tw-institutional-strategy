@@ -1,0 +1,30 @@
+name: 50 Audit Check
+
+on:
+  issues:
+    types: [labeled]
+  issue_comment:
+    types: [created]
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'issues' && contains(fromJSON('["screened", "signal-confirmed", "holding"]'), github.event.label.name)) ||
+      (github.event_name == 'issue_comment' && github.event.comment.body == '/re-audit')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run Audit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          python scripts/audit/audit_issue.py

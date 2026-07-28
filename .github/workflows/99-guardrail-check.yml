@@ -1,19 +1,28 @@
-name: 30 Signal Monitor
+name: 99 Guardrail Check
 
 on:
-  workflow_run:
-    workflows: ["20 Manager Loop"]
-    types: [completed]
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      skip_rolling_check:
+        description: "是否跳過 rolling JSON 日期檢查（給 00-data-fetch 使用）"
+        required: false
+        type: boolean
+        default: false
+      max_candidates:
+        description: "Setup A 每日最大候選數量"
+        required: false
+        type: string
+        default: "5"
+    outputs:
+      passed:
+        description: "Guardrail 是否通過"
+        value: ${{ jobs.guardrail.outputs.passed }}
 
 jobs:
   guardrail:
-    uses: ./.github/workflows/99-guardrail-check.yml
-
-  signal-monitor:
     runs-on: ubuntu-latest
-    needs: guardrail
-    if: ${{ needs.guardrail.outputs.passed == 'true' || github.event_name == 'workflow_dispatch' }}
+    outputs:
+      passed: ${{ steps.check.outputs.passed }}
 
     steps:
       - name: Checkout repository
@@ -30,6 +39,7 @@ jobs:
           pip install requests
 
       - name: Download latest institutional data artifact
+        if: ${{ inputs.skip_rolling_check == false }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -49,15 +59,19 @@ jobs:
             --name "institutional-data-${DATA_RUN_ID}" \
             --dir data/
 
-      - name: Run Signal Monitor
+      - name: Run guardrail check
+        id: check
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SKIP_ROLLING_CHECK: ${{ inputs.skip_rolling_check }}
+          MAX_CANDIDATES_PER_RUN: ${{ inputs.max_candidates }}
         run: |
-          python scripts/monitor/signal_monitor.py
+          python scripts/guardrail/pre_run_check.py
 
-      - name: Upload monitor report
+      - name: Upload guardrail report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: monitor-report-${{ github.run_id }}
-          path: data/monitor/
+          name: guardrail-report-${{ github.run_id }}
+          path: data/guardrail/
           retention-days: 90
