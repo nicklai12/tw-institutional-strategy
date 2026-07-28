@@ -1,0 +1,121 @@
+name: Setup B 候選股登記
+description: 登記一檔通過 Setup B 篩選條件的候選股。所有欄位皆為必填，缺一不可。
+labels:
+  - setup-b
+  - screened
+body:
+  - type: markdown
+    attributes:
+      value: |
+        請完整填寫以下欄位。缺少任一必填欄位時，後續 Audit Action 會自動拒絕此 Issue。
+
+  - type: input
+    id: ticker
+    attributes:
+      label: ticker
+      description: 股票代號（例如 2330）
+    validations:
+      required: true
+
+  - type: input
+    id: screen_date
+    attributes:
+      label: screen_date
+      description: 篩選日期，格式 YYYY-MM-DD
+    validations:
+      required: true
+
+  - type: input
+    id: avg_volume_20d_m
+    attributes:
+      label: avg_volume_20d_m
+      description: 近 20 日均量，單位「百萬台幣」
+    validations:
+      required: true
+
+  - type: input
+    id: trust_10d_net
+    attributes:
+      label: trust_10d_net
+      description: 投信近 10 日合計買賣超，單位「張」（買超為正，賣超為負）
+    validations:
+      required: true
+
+  - type: input
+    id: trust_10d_buy_days
+    attributes:
+      label: trust_10d_buy_days
+      description: 近 10 日中買超天數（需 ≥ 7）
+    validations:
+      required: true
+
+  - type: dropdown
+    id: foreign_10d_direction
+    attributes:
+      label: foreign_10d_direction
+      description: 外資 10 日方向
+      options:
+        - buying
+        - neutral
+        - selling
+    validations:
+      required: true
+
+  - type: dropdown
+    id: close_vs_ma20
+    attributes:
+      label: close_vs_ma20
+      description: 收盤價相對 20 日均線
+      options:
+        - above
+        - below
+    validations:
+      required: true
+
+  - type: input
+    id: breakout_price
+    attributes:
+      label: breakout_price
+      description: 突破點位
+    validations:
+      required: true
+
+  - type: input
+    id: entry_zone
+    attributes:
+      label: entry_zone
+      description: 建議進場區間（例如 975-985）
+    validations:
+      required: true
+
+  - type: input
+    id: stop_loss_price
+    attributes:
+      label: stop_loss_price
+      description: 停損價
+    validations:
+      required: true
+
+  - type: input
+    id: position_size_lots
+    attributes:
+      label: position_size_lots
+      description: 建議張數（1 張 = 1000 股）
+    validations:
+      required: true
+
+  - type: input
+    id: risk_r_pct
+    attributes:
+      label: risk_r_pct
+      description: 本筆風險占總資金 %，需 ≤ 1.0（例如 0.8）
+    validations:
+      required: true
+
+  - type: input
+    id: artifact_run_id
+    attributes:
+      label: artifact_run_id
+      description: 對應的 GitHub Actions Run ID，用於追溯原始數據
+    validations:
+      required: true
