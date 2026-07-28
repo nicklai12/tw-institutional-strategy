@@ -17,11 +17,14 @@ graph TD
     G --> H[scripts/report]
     H --> I[持有監控 / 出場]
     I --> J[closed]
+    J --> K[scripts/report/generate_report.py]
+    K --> L[GitHub Pages 每週儀表板]
 
     style A fill:#e1f5fe
     style E fill:#fff9c4
     style F fill:#ffccbc
     style J fill:#e8f5e9
+    style L fill:#e1f5fe
 ```
 
 ---
@@ -35,7 +38,7 @@ graph TD
 | Phase 2 | 數據管線 | `scripts/data/` 負責每日從 TWSE 等來源取得原始數據，並輸出到 fixtures 格式。 |
 | Phase 3 | 篩選器 | `scripts/screener/` 讀取標準化資料，依 Setup A/B/C 條件產生候選股 Issue。 |
 | Phase 4 | 審核與護欄 | `scripts/audit/` 在 Issue 建立或標記時執行，檢查必填欄位與策略護欄。 |
-| Phase 5 | 報告與追蹤 | `scripts/report/` 產生每日持倉監控、出場提醒與績效結算報告。 |
+| Phase 5 | 報告與追蹤 | `scripts/report/` 產生每日持倉監控、出場提醒，以及每週五自動推送到 GitHub Pages 的績效儀表板。 |
 
 ---
 
@@ -49,7 +52,7 @@ scripts/
 └── report/        # Report 腳本：持倉監控與績效報告
 
 .github/
-├── workflows/         # GitHub Actions Workflow（待 Phase 2~5 實作）
+├── workflows/         # GitHub Actions Workflow
 ├── ISSUE_TEMPLATE/    # 三個 Setup 候選股 Issue 表單
 └── project-config/    # Projects Board 欄位與自動化規則
 
@@ -61,16 +64,15 @@ tests/
 
 ## Workflow 觸發時機
 
-> 本節描述規劃中的 Workflow 與觸發時機；實際 `.yml` 檔案將在後續 Phase 建立。
-
 | Workflow | 觸發時機 | 用途 |
 |---|---|---|
-| `data-daily.yml` | 每個交易日收盤後（約 16:30）透過 `schedule` 觸發 | 執行 `scripts/data/` 取得當日數據 |
-| `screener-daily.yml` | `data-daily.yml` 成功後 `workflow_run` 觸發 | 執行 `scripts/screener/` 產生候選股 Issue |
-| `audit-on-issue.yml` | Issue 建立或新增 `screened` Label 時觸發 | 執行 `scripts/audit/` 檢查欄位與護欄 |
-| `report-daily.yml` | 每日盤後透過 `schedule` 觸發 | 產生持倉監控與風險報告 |
-| `exit-monitor.yml` | 每日盤後透過 `schedule` 觸發 | 檢查出場條件並標記 `exit-triggered` |
-| `manual-human-review.yml` | `workflow_dispatch` 手動觸發 | 對 `human-review` Issue 進行人工覆核 |
+| `00-data-fetch.yml` | 每個交易日收盤後（約 16:30）透過 `schedule` 觸發 | 執行 `scripts/data/` 取得當日數據 |
+| `10-screener-setup-a.yml` | `00-data-fetch.yml` 成功後 `workflow_run` 觸發 | 執行 `scripts/screener/` 產生 Setup A 候選股 Issue |
+| `20-manager-loop.yml` | `00-data-fetch.yml` 成功後 `workflow_run` 觸發 | 執行 `scripts/manager/` 檢查大盤與持倉上限護欄 |
+| `30-signal-monitor.yml` | `20-manager-loop.yml` 成功後 `workflow_run` 觸發 | 執行 `scripts/monitor/` 檢查出場條件並標記 `exit-triggered` |
+| `50-audit-check.yml` | Issue 建立、新增 `screened`/`signal-confirmed`/`holding` Label，或留言 `/re-audit` 時觸發 | 執行 `scripts/audit/` 檢查欄位與護欄 |
+| `60-performance-report.yml` | 每週五台灣時間 18:30 透過 `schedule` 觸發，或 `workflow_dispatch` 手動觸發 | 執行 `scripts/report/generate_report.py` 並部署到 GitHub Pages |
+| `99-guardrail-check.yml` | 被其他 workflow 以 `workflow_call` 呼叫 | 執行 `scripts/guardrail/pre_run_check.py` 檢查資料與環境 |
 
 ---
 
@@ -101,12 +103,27 @@ Audit Action 會對每個候選股 Issue 執行以下護欄檢查。未通過者
 
 ---
 
+## 每週績效儀表板
+
+`scripts/report/generate_report.py` 每週五台灣時間 18:30 自動執行，彙整以下資訊並推送到 GitHub Pages：
+
+- **系統健康指標**：本週新增候選 Issue 數、Audit 一次通過率、Guardrail 攔截次數、人工介入次數。
+- **策略績效指標**：Setup A/B/C 的總筆數、獲利筆數、虧損筆數、停損筆數與勝率（僅從 Issue Labels 讀取，不做額外計算）。
+- **目前持倉狀態**：holding 中的 Issue 數量、各 Setup 分布、每檔進場天數與最新損益。
+
+儀表板網址：`https://<owner>.github.io/tw-institutional-strategy/`
+
+首次使用前，請參考 `docs/SETUP_PAGES.md` 在 Repository Settings > Pages 中選擇 `gh-pages` branch 作為來源。
+
+---
+
 ## 快速開始
 
 1. 確保 `tests/fixtures/` 已存在 Phase 0 資料。
 2. 執行 `scripts/setup-labels.sh` 建立所有 Labels。
 3. 在 GitHub Projects 中建立 Board，並參考 `.github/project-config/board-columns.md` 設定六個欄位與自動化規則。
-4. 後續 Phase 將在 `scripts/` 與 `.github/workflows/` 中補上實際腳本與 Actions。
+4. 參考 `docs/SETUP_PAGES.md` 開啟 GitHub Pages，讓 `60-performance-report.yml` 每週自動部署儀表板。
+5. 執行 `pytest tests/` 驗證所有腳本與 workflow 的邏輯。
 
 ---
 
