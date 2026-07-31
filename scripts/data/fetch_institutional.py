@@ -1,5 +1,6 @@
 """Fetch daily institutional trading data from TWSE and store as raw JSON."""
 
+import argparse
 import datetime
 import json
 import os
@@ -164,9 +165,69 @@ def fetch_institutional(date: datetime.date) -> dict[str, Any]:
     return parsed
 
 
-def main() -> int:
+def _write_raw_file(date: datetime.date, result: dict[str, Any]) -> str:
+    """Write a single parsed result to data/raw/YYYYMMDD.json."""
+    os.makedirs(_RAW_OUTPUT_DIR, exist_ok=True)
+    output_path = os.path.join(_RAW_OUTPUT_DIR, f"{_compact_date(date)}.json")
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(result, f, ensure_ascii=False, indent=2)
+    return output_path
+
+
+def _backfill_trading_days(backfill_days: int, today: datetime.date) -> int:
+    """Fetch up to backfill_days recent trading days, skipping existing files.
+
+    Non-trading days are skipped. Days that fail the TWSE API are logged as
+    warnings and skipped so the loop can continue. Returns shell exit code 0.
+    """
+    os.makedirs(_RAW_OUTPUT_DIR, exist_ok=True)
+
+    success_count = 0
+    skipped_count = 0
+    candidate = today
+
+    while success_count + skipped_count < backfill_days:
+        if not is_trading_day(candidate):
+            candidate -= datetime.timedelta(days=1)
+            continue
+
+        compact = _compact_date(candidate)
+        output_path = os.path.join(_RAW_OUTPUT_DIR, f"{compact}.json")
+
+        if os.path.exists(output_path):
+            print(f"SKIP: {compact} 已存在")
+            skipped_count += 1
+            candidate -= datetime.timedelta(days=1)
+            continue
+
+        try:
+            result = fetch_institutional(candidate)
+        except RuntimeError as exc:
+            print(f"WARNING: {compact} 抓取失敗 ({exc})，跳過")
+            candidate -= datetime.timedelta(days=1)
+            continue
+
+        output_path = _write_raw_file(candidate, result)
+        print(
+            f"OK: {result['fetch_date']} 共 {result['record_count']} 筆，"
+            f"已寫入 {output_path}"
+        )
+        success_count += 1
+        candidate -= datetime.timedelta(days=1)
+
+    print(
+        f"OK: backfill 完成，成功寫入 {success_count} 個交易日，"
+        f"跳過已存在 {skipped_count} 個"
+    )
+    return 0
+
+
+def main(backfill_days: int = 0) -> int:
     """Entry point. Returns shell exit code."""
     today = datetime.date.today()
+
+    if backfill_days > 0:
+        return _backfill_trading_days(backfill_days, today)
 
     if not is_trading_day(today):
         print("SKIP: 今日非交易日")
@@ -187,11 +248,7 @@ def main() -> int:
             print(f"ERROR: {code}")
         return 1
 
-    os.makedirs(_RAW_OUTPUT_DIR, exist_ok=True)
-    output_path = os.path.join(_RAW_OUTPUT_DIR, f"{_compact_date(today)}.json")
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(result, f, ensure_ascii=False, indent=2)
-
+    output_path = _write_raw_file(today, result)
     print(
         f"OK: {result['fetch_date']} 共 {result['record_count']} 筆，"
         f"已寫入 {output_path}"
@@ -200,4 +257,14 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    parser = argparse.ArgumentParser(
+        description="Fetch institutional trading data from TWSE."
+    )
+    parser.add_argument(
+        "--backfill-days",
+        type=int,
+        default=0,
+        help="Number of recent trading days to backfill (default: 0).",
+    )
+    args = parser.parse_args()
+    sys.exit(main(args.backfill_days))
