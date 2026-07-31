@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TW Institutional Strategy Weekly Report</title>
+  <style>
+    :root {
+      --bg: #f7f8fa;
+      --card: #ffffff;
+      --text: #1f2328;
+      --muted: #57606a;
+      --border: #d0d7de;
+      --accent: #0969da;
+      --win: #1a7f37;
+      --loss: #cf222e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+    header {
+      margin-bottom: 24px;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 8px;
+    }
+    .updated {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    h2 {
+      font-size: 1.1rem;
+      margin: 0 0 12px;
+      color: var(--accent);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    th { color: var(--muted); font-weight: 600; }
+    .metric-value { font-weight: 600; }
+    .holdings-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .holdings-list li {
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .holdings-list li:last-child { border-bottom: none; }
+    .disclaimer {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .positive { color: var(--win); }
+    .negative { color: var(--loss); }
+    .summary {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 480px) {
+      h1 { font-size: 1.25rem; }
+      .card { padding: 12px; }
+      th, td { padding: 6px; font-size: 0.9rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>TW Institutional Strategy Weekly Report</h1>
+      <div class="updated">
+        最後更新時間：<time datetime="2026-07-31T19:19:35.731981+08:00">2026-07-31T19:19:35.731981+08:00</time>
+      </div>
+    </header>
+
+    <section class="card">
+      <h2>系統健康（當週）</h2>
+      <table>
+        <tbody>
+          <tr>
+            <th>新增候選 Issues</th>
+            <td class="metric-value">0 個</td>
+          </tr>
+          <tr>
+            <th>Audit 一次通過率</th>
+            <td class="metric-value">100%</td>
+          </tr>
+          <tr>
+            <th>Guardrail 攔截次數</th>
+            <td class="metric-value">0 次</td>
+          </tr>
+          <tr>
+            <th>人工介入次數</th>
+            <td class="metric-value">0 次</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>目前持倉</h2>
+      <p class="summary">
+        總計 0 檔
+        （Setup A：0／Setup B：0／Setup C：0）
+      </p>
+      <ul class="holdings-list">
+        <li>目前無持倉</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>歷史策略績效</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>策略</th>
+            <th>總筆數</th>
+            <th>獲利</th>
+            <th>虧損</th>
+            <th>停損</th>
+            <th>勝率</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>Setup A</td>
+              <td>0</td>
+              <td>0</td>
+              <td>0</td>
+              <td>0</td>
+              <td>0%</td>
+            </tr>
+            
+            <tr>
+              <td>Setup B</td>
+              <td>0</td>
+              <td>0</td>
+              <td>0</td>
+              <td>0</td>
+              <td>0%</td>
+            </tr>
+            
+            <tr>
+              <td>Setup C</td>
+              <td>0</td>
+              <td>0</td>
+              <td>0</td>
+              <td>0</td>
+              <td>0%</td>
+            </tr>
+            
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card disclaimer">
+      免責聲明：本系統為個人研究工具，不構成投資建議。所有交易決策均需自行判斷，自負盈虧。
+    </section>
+  </div>
+</body>
+</html>
