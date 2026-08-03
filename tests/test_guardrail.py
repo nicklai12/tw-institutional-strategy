@@ -1,5 +1,6 @@
 """Tests for the Guardrail checks."""
 
+import datetime
 import json
 import os
 from unittest.mock import patch
@@ -46,6 +47,15 @@ def test_check_rolling_data(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "scripts.guardrail.pre_run_check._ROLLING_DIR", str(tmp_path)
     )
+
+    # Pin date.today() so the filename check is deterministic.
+    class FixedDate:
+        @classmethod
+        def today(cls):
+            return datetime.date(2026, 7, 28)
+
+    monkeypatch.setattr("scripts.guardrail.pre_run_check.date", FixedDate)
+
     payload = {"fetch_date": "2026-07-28"}
     path = tmp_path / "20260728_rolling.json"
     path.write_text(json.dumps(payload), encoding="utf-8")

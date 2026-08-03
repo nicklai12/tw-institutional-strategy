@@ -1,0 +1,24 @@
+{
+  "audit_date": "20260803",
+  "verdict": "FAIL",
+  "checklist": {
+    "F1": "PASS",
+    "F2": "PASS",
+    "F3": "PASS",
+    "I1": "PASS",
+    "I2": "PASS",
+    "R1": "PASS",
+    "R2": "FAIL",
+    "R3": "PASS",
+    "S1": "PASS",
+    "S2": "PASS"
+  },
+  "failures": [
+    {
+      "item": "R2",
+      "evidence": "rolling JSON 輸出記錄缺少 Setup A 篩選邏輯在 stage 1 使用的 avg_volume_20d 欄位。compute_rolling.py 產生的記錄僅包含 ticker/name/foreign_*/trust_*/dealer_net 與 rolling 衍生欄位（foreign_5d_net、trust_5d_net 等）及 days_used；setup_a.py 的 screen_setup_a() 第一階段卻以 stock.get('avg_volume_20d') 進行成交量過濾，當該值為 None 時直接 continue。這會導致以真實 rolling JSON 執行 Setup A 時所有股票在 stage 1 被剔除，產出 0 檔候選股，違反 Specification 第 3 節 Setup A 必填欄位應包含 avg_volume_20d_m 的要求。"
+    }
+  ],
+  "conditional_notes": [],
+  "recommendation": "退回 Stage 3B 修改（或連同 Stage 2 Oracle 重新確認）：在 compute_rolling.py 輸出中補上 avg_volume_20d，或修改 setup_a.py 移除 stage 1 對 rolling JSON 中 avg_volume_20d 的預期，使 rolling JSON 欄位與 Setup A 篩選邏輯一致後再重新執行 Stage 4 測試與稽核。"
+}
