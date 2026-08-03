@@ -184,20 +184,18 @@ def screen_setup_a(
     min_avg_volume_k = min_avg_volume_m * 1000  # 千元
     compact_date = screen_date.replace("-", "")
 
-    # Step 1-3: filter by liquidity, foreign resonance, trust resonance.
+    # Step 1-2: filter by foreign resonance and trust resonance.
     passed_stage1: list[dict[str, Any]] = []
     for stock in stocks:
-        avg_volume = stock.get("avg_volume_20d")
         foreign_net = stock.get("foreign_5d_net", 0)
         trust_net = stock.get("trust_5d_net", 0)
 
-        if avg_volume is None or avg_volume <= min_avg_volume_k:
-            continue
         if foreign_net <= 0 or trust_net <= 0:
             continue
         passed_stage1.append(stock)
 
-    # Step 4: fetch price metrics and filter by price structure.
+    # Step 3-4: fetch price metrics and filter by liquidity + price structure.
+    # avg_volume_20d comes from the price fetcher, not the upstream rolling JSON.
     passed_stage2: list[dict[str, Any]] = []
     for stock in passed_stage1:
         ticker = stock.get("ticker")
@@ -208,10 +206,13 @@ def screen_setup_a(
         if metrics is None:
             continue
 
+        avg_volume = metrics.get("avg_volume_20d")
         close = metrics.get("close", 0)
         ma20 = metrics.get("ma20", float("inf"))
         direction = metrics.get("ma20_direction", "")
 
+        if avg_volume is None or avg_volume <= min_avg_volume_k:
+            continue
         if close <= ma20:
             continue
         if direction not in allowed_directions:

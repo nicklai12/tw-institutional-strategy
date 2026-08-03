@@ -1,0 +1,19 @@
+{
+  "audit_date": "20260803",
+  "verdict": "PASS",
+  "checklist": {
+    "F1": "PASS",
+    "F2": "PASS",
+    "F3": "PASS",
+    "I1": "PASS",
+    "I2": "PASS",
+    "R1": "PASS",
+    "R2": "PASS",
+    "R3": "PASS",
+    "S1": "PASS",
+    "S2": "PASS"
+  },
+  "failures": [],
+  "conditional_notes": [],
+  "recommendation": "可上線"
+}

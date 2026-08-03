@@ -1,0 +1,59 @@
+{
+  "design_decision_a": {
+    "chosen": "選項二",
+    "reason": "讓 fetch_institutional.py 的 main() 負責補齊最近 20 個交易日 raw 檔案。理由：(1) 只改一個腳本，workflow 與 compute_rolling.py 幾乎不動，符合最小化修改；(2) 不依賴前次 artifact，無 cold start 問題；(3) 單日 API 呼叫已由程式碼證實可行，規避了 TWSE API 是否支援範圍查詢的未確認 blocker；(4) 每日重跑會覆蓋相同檔名，天然冪等。選項一需額外 artifact 下載與 run-id 查詢邏輯，且首次 19 天無處可下載；選項三新增獨立腳本與 workflow 條件判斷，超出必要範圍。"
+  },
+  "workflow_pseudocode": [
+    "guardrail job: 呼叫 99-guardrail-check.yml（現有，不變）",
+    "data-fetch job: needs: guardrail, if: guardrail.passed == 'true'（現有，不變）",
+    "step: actions/checkout@v4（現有，不變）",
+    "step: setup-python 3.11（現有，不變）",
+    "step: pip install requests pandas（現有，不變）",
+    "step: python scripts/data/fetch_institutional.py（現有，行為改為寫入最近 20 個交易日）",
+    "step: python scripts/data/compute_rolling.py（現有，不變）",
+    "step: upload-artifact@v4 name=institutional-data-${{ github.run_id }} path=data/ retention-days=90（現有，不變）",
+    "step: downstream trigger placeholder（現有，不變）"
+  ],
+  "idempotency_mechanism": "fetch_institutional.py 的 main() 每次以「最近 20 個交易日」為目標，依日期由近到遠抓取，成功後以 YYYYMMDD.json 檔名寫入 data/raw/。由於檔名僅由日期決定，重跑同一天會覆蓋相同檔案；歷史日期的 API 回應不變，因此無論是部分失敗重跑或手動重觸發，最終 data/raw/ 內容都與單次成功執行一致。compute_rolling.py 讀取後以日期排序取最近 20 筆，輸出亦相同。",
+  "oracle": {
+    "min_raw_files": 20,
+    "required_fields_per_file": [
+      "fetch_date",
+      "fetch_timestamp",
+      "source_url",
+      "record_count",
+      "data",
+      "data[].ticker",
+      "data[].name",
+      "data[].foreign_buy",
+      "data[].foreign_sell",
+      "data[].foreign_net",
+      "data[].trust_buy",
+      "data[].trust_sell",
+      "data[].trust_net",
+      "data[].dealer_net"
+    ],
+    "forbidden_log_patterns": [
+      "WARNING: 原始檔案不足.*"
+    ]
+  },
+  "files_to_modify": [
+    {
+      "path": "scripts/data/fetch_institutional.py",
+      "change_summary": "main() 改為產生最近 20 個交易日（weekday，遇休市則繼續往前補），依序呼叫 fetch_institutional(date)，並將結果寫入 data/raw/YYYYMMDD.json；單日 fetch_institutional(date) 函式保持不變；錯誤處理改為單日失敗可跳過、持續補齊 20 天，除非當日非交易日才整體 SKIP。"
+    },
+    {
+      "path": "scripts/data/compute_rolling.py",
+      "change_summary": "無需修改；其 _MIN_RAW_FILES=20 與 loaded[-20:] 已符合本設計目標。"
+    },
+    {
+      "path": ".github/workflows/00-data-fetch.yml",
+      "change_summary": "無需新增步驟；現有 fetch → compute_rolling → upload artifact 順序已適用，僅 fetch 步驟的執行時間會變長。"
+    }
+  ],
+  "files_to_create": [],
+  "blockers": [
+    "TWSE API 是否支援日期範圍查詢：程式碼僅使用單一 date 參數，未查證官方文件；本設計以 20 次單日查詢規避此問題。",
+    "台股休市日處理：is_trading_day() 僅判斷 weekday<5，未處理國定假日；本設計以「單日 fetch 若回傳過少紀錄則跳過、繼續往前補」來容忍，但無法保證一定補齊 20 個交易日（例如連續假期過長時可能不足）。"
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "recon_date": "20260731",
+  "findings": {
+    "fetch_days": "1 天（只抓今天）",
+    "fetch_date_param": "datetime.date.today()，經 _compact_date() 轉為 YYYYMMDD 後作為 TWSE URL 的 date 參數",
+    "rolling_min_files": "20 個",
+    "rolling_trigger_condition": "compute_rolling() 中 len(loaded) < _MIN_RAW_FILES（第 66 行），_MIN_RAW_FILES = 20",
+    "rolling_output_columns": [
+      "ticker",
+      "name",
+      "foreign_buy",
+      "foreign_sell",
+      "foreign_net",
+      "trust_buy",
+      "trust_sell",
+      "trust_net",
+      "dealer_net",
+      "foreign_5d_net",
+      "trust_5d_net",
+      "trust_10d_net",
+      "trust_10d_buy_days",
+      "foreign_10d_net",
+      "foreign_20d_net",
+      "foreign_recent_3d_all_buy"
+    ],
+    "workflow_steps": [
+      "Checkout repository",
+      "Set up Python 3.11",
+      "Install dependencies",
+      "Step 2 - Fetch institutional data",
+      "Step 3 - Compute rolling metrics",
+      "Step 4 - Upload artifacts",
+      "Step 5 - Trigger downstream Screener workflows"
+    ],
+    "artifact_env": "clean_each_run",
+    "twse_api_supports_range": false
+  },
+  "assumptions": [
+    "fetch_institutional.py 的 main() 僅抓取「今天」單日；fetch_institutional(date) 雖可帶任意單日，但腳本未實作多日迴圈。",
+    "is_trading_day() 僅以 weekday < 5 判斷交易日，未扣除台股休市日。",
+    "compute_rolling.py 只吃 data/raw/*.json，且檔名須為 8 位純數字 YYYYMMDD。",
+    "fetch 與 compute_rolling 之間無直接參數傳遞，資料透過 data/raw/ 檔案系統交換。",
+    "GitHub Actions 使用 ubuntu-latest hosted runner，每次為全新環境，fetch 前未還原前次 artifact。",
+    "rolling 輸出欄位中的 foreign_20d_net 是唯一明確使用 20 日窗口的欄位；其餘分別使用 3/5/10 日窗口。"
+  ],
+  "blockers": [
+    "TWSE API 是否真正支援日期範圍查詢：程式碼僅使用單一 date 參數，未查證官方 API 文件。",
+    "data/raw/ 在 workflow 的 checkout 後、fetch 前是否已存在檔案：取決於倉庫是否提交該目錄內容，無法從這三個檔案確認。"
+  ]
+}

@@ -1,5 +1,6 @@
 """Compute rolling institutional metrics from recent raw data files."""
 
+import datetime
 import glob
 import json
 import os
@@ -59,21 +60,23 @@ def compute_rolling(raw_dir: str = _RAW_DIR) -> dict[str, Any]:
     Returns:
         Canonical rolling output dict for the latest date.
 
-    Raises:
-        RuntimeError: If fewer than MIN_RAW_FILES raw files are available.
+    Notes:
+        If fewer than 20 raw files are available, a warning is printed and
+        metrics are computed using the available days (degraded mode).
     """
     loaded = _load_raw_files(raw_dir)
     if len(loaded) < _MIN_RAW_FILES:
-        raise RuntimeError(
-            f"原始檔案不足：需要至少 {_MIN_RAW_FILES} 個交易日，"
-            f"目前只有 {len(loaded)} 個"
+        print(
+            f"WARNING: 原始檔案不足：需要至少 {_MIN_RAW_FILES} 個交易日，"
+            f"目前只有 {len(loaded)} 個，將以可用天數降級計算"
         )
 
-    # Use the most recent 20 trading days for all windows.
+    # Use the most recent 20 trading days (or fewer if not available).
     recent = loaded[-20:]
     recent_dates = [d for d, _ in recent]
     latest_date = recent_dates[-1]
     latest_payload = recent[-1][1]
+    days_used = len(recent)
 
     by_ticker = _records_by_ticker(recent)
 
@@ -111,6 +114,7 @@ def compute_rolling(raw_dir: str = _RAW_DIR) -> dict[str, Any]:
         "fetch_timestamp": latest_payload.get("fetch_timestamp"),
         "source_url": latest_payload.get("source_url"),
         "record_count": len(rolling_data),
+        "days_used": days_used,
         "data": rolling_data,
     }
 
@@ -124,14 +128,14 @@ def main() -> int:
         return 1
 
     os.makedirs(_ROLLING_DIR, exist_ok=True)
-    latest_date = result["fetch_date"].replace("-", "")
-    output_path = os.path.join(_ROLLING_DIR, f"{latest_date}_rolling.json")
+    today_compact = datetime.date.today().strftime("%Y%m%d")
+    output_path = os.path.join(_ROLLING_DIR, f"{today_compact}_rolling.json")
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2)
 
     print(
         f"OK: {result['fetch_date']} 共 {result['record_count']} 筆，"
-        f"已寫入 {output_path}"
+        f"使用 {result['days_used']} 個交易日，已寫入 {output_path}"
     )
     return 0
 

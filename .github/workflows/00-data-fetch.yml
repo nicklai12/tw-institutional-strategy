@@ -30,9 +30,61 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests pandas
 
+      - name: Step 1 - Restore historical raw data
+        id: restore
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          PREVIOUS_RUN_ID=$(gh run list \
+            --workflow=00-data-fetch.yml \
+            --branch=${{ github.ref_name }} \
+            --status=success \
+            --limit=1 \
+            --json databaseId \
+            --jq '.[0].databaseId')
+          EXIT_CODE=$?
+          set -e
+
+          if [ -z "$PREVIOUS_RUN_ID" ] || [ "$EXIT_CODE" -ne 0 ]; then
+            echo "first_run=true" >> "$GITHUB_OUTPUT"
+            echo "First run or no previous successful run found"
+            exit 0
+          fi
+
+          echo "Found previous successful run: $PREVIOUS_RUN_ID"
+          set +e
+          gh run download "$PREVIOUS_RUN_ID" --dir /tmp/previous-artifact
+          DOWNLOAD_EXIT=$?
+          set -e
+
+          if [ "$DOWNLOAD_EXIT" -ne 0 ]; then
+            echo "first_run=true" >> "$GITHUB_OUTPUT"
+            echo "Failed to download previous artifact"
+            exit 0
+          fi
+
+          ARTIFACT_DIR=$(find /tmp/previous-artifact -maxdepth 1 -type d -name 'institutional-data-*' | head -n 1)
+          if [ -d "${ARTIFACT_DIR}/data" ]; then
+            mkdir -p data
+            cp -r "${ARTIFACT_DIR}/data/." data/
+            RESTORED_COUNT=$(find data/raw -name '*.json' 2>/dev/null | wc -l)
+            echo "first_run=false" >> "$GITHUB_OUTPUT"
+            echo "Restored ${RESTORED_COUNT} raw files from previous artifact (run ${PREVIOUS_RUN_ID})"
+          else
+            echo "first_run=true" >> "$GITHUB_OUTPUT"
+            echo "Previous artifact does not contain expected data/ directory"
+          fi
+
       - name: Step 2 - Fetch institutional data
         run: |
-          python scripts/data/fetch_institutional.py
+          if [ "${{ steps.restore.outputs.first_run }}" == "true" ]; then
+            echo "First run, backfilling 25 days"
+            python scripts/data/fetch_institutional.py --backfill-days 25
+          else
+            echo "Restoring from previous artifact, fetching today only"
+            python scripts/data/fetch_institutional.py --backfill-days 0
+          fi
 
       - name: Step 3 - Compute rolling metrics
         run: |

@@ -73,3 +73,35 @@ def test_setup_a_matches_oracle(input_path: str, output_path: str):
             f"實際: {sorted(result_tickers)}\n"
             f"diff: {'; '.join(diff_parts)}"
         )
+
+
+def test_setup_a_works_without_avg_volume_in_rolling_record():
+    """Real rolling JSON does not include avg_volume_20d; Setup A must still work."""
+    stock = {
+        "ticker": "2884",
+        "name": "玉山金",
+        "foreign_5d_net": 30879.47,
+        "trust_5d_net": 3090.28,
+    }
+
+    def mock_fetcher(ticker: str, date: str) -> dict | None:
+        return {
+            "close": 36.4,
+            "ma5": 36.4,
+            "ma20": 34.91,
+            "ma20_direction": "rising",
+            "avg_volume_20d": 1746742.76,
+        }
+
+    result = screen_setup_a(
+        [stock],
+        price_fetcher=mock_fetcher,
+        screen_date="2026-07-27",
+        min_avg_volume_m=200,
+        max_candidates=100,
+        allowed_directions={"rising"},
+    )
+
+    assert len(result) == 1
+    assert result[0]["ticker"] == "2884"
+    assert result[0]["avg_volume_20d"] == 1746742.76

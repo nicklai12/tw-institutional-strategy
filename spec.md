@@ -250,13 +250,77 @@
 }
 ```
 
+### 5.5 Raw Institutional Data
+
+檔案：`data/raw/YYYYMMDD.json`
+
+由 `scripts/data/fetch_institutional.py` 寫入的單日機構籌碼原始資料。
+
+```json
+{
+  "fetch_date": "2026-07-31",
+  "fetch_timestamp": "2026-07-31T18:30:00",
+  "source_url": "https://www.twse.com.tw/rwd/zh/fund/T86?date=20260731&selectType=ALLBUT0999",
+  "record_count": 101,
+  "data": [
+    {
+      "ticker": "2330",
+      "name": "台積電",
+      "foreign_buy": 1000,
+      "foreign_sell": 500,
+      "foreign_net": 500,
+      "trust_buy": 2000,
+      "trust_sell": 1000,
+      "trust_net": 1000,
+      "dealer_net": 300
+    }
+  ]
+}
+```
+
+### 5.6 Rolling Metrics
+
+檔案：`data/rolling/YYYYMMDD_rolling.json`
+
+由 `scripts/data/compute_rolling.py` 寫入的滾動指標資料。當可用交易日少於 20 個時，`days_used` 會標註實際使用天數（降級模式）。
+
+```json
+{
+  "fetch_date": "2026-07-31",
+  "fetch_timestamp": "2026-07-31T18:30:00",
+  "source_url": "https://www.twse.com.tw/rwd/zh/fund/T86?date=20260731&selectType=ALLBUT0999",
+  "record_count": 101,
+  "days_used": 20,
+  "data": [
+    {
+      "ticker": "2330",
+      "name": "台積電",
+      "foreign_buy": 1000,
+      "foreign_sell": 500,
+      "foreign_net": 500,
+      "trust_buy": 2000,
+      "trust_sell": 1000,
+      "trust_net": 1000,
+      "dealer_net": 300,
+      "foreign_5d_net": 2500,
+      "trust_5d_net": 5000,
+      "trust_10d_net": 10000,
+      "trust_10d_buy_days": 7,
+      "foreign_10d_net": 5000,
+      "foreign_20d_net": 10000,
+      "foreign_recent_3d_all_buy": true
+    }
+  ]
+}
+```
+
 ---
 
 ## 6. Workflow 觸發條件
 
 | Workflow | 觸發條件 | 說明 |
 |---|---|---|
-| `00-data-fetch.yml` | `schedule` | 每個交易日收盤後約 16:30 |
+| `00-data-fetch.yml` | `schedule` | 每個交易日收盤後約 16:30；首次執行補抓 25 日，之後還原前次 artifact 並只抓當日 |
 | `10-screener-setup-a.yml` | `workflow_run` | `00-data-fetch.yml` 成功後 |
 | `20-manager-loop.yml` | `workflow_run` | `00-data-fetch.yml` 成功後 |
 | `30-signal-monitor.yml` | `workflow_run` | `20-manager-loop.yml` 成功後 |
