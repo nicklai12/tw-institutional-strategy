@@ -33,7 +33,7 @@ graph TD
 
 ### 說明
 
-1. **市場數據** 由 `scripts/data/` 每日取得並標準化。
+1. **市場數據** 由 `scripts/data/` 每日取得並標準化；`fetch_institutional.py` 可透過 `--backfill-days` 補抓歷史交易日，`compute_rolling.py` 計算最近 20 日滾動指標並標註實際使用天數。
 2. **標準化資料** 進入 `tests/fixtures/` 作為測試黃金標準。
 3. **Screener** 讀取資料產生候選股 **GitHub Issue**。
 4. **Audit** 檢查 Issue 欄位與護欄規則。
@@ -49,9 +49,9 @@ graph TD
 
 | 路徑 | 職責 | 輸入 | 輸出 |
 |---|---|---|---|
-| `scripts/data/fetch_institutional.py` | 從 TWSE 取得機構籌碼資料 | TWSE API | `data/raw/YYYYMMDD.json` |
-| `scripts/data/compute_rolling.py` | 計算滾動統計 | `data/raw/` | `data/rolling/YYYYMMDD_rolling.json` |
-| `scripts/screener/setup_a.py` | 執行 Setup A 篩選邏輯 | `tests/fixtures/` 或 `data/rolling/` | `data/screener/screener_result_a_YYYYMMDD.json` |
+| `scripts/data/fetch_institutional.py` | 從 TWSE 取得機構籌碼資料，支援 `--backfill-days N` 補抓最近交易日 | TWSE API | `data/raw/YYYYMMDD.json` |
+| `scripts/data/compute_rolling.py` | 計算最近 20 個交易日滾動指標；原始檔案不足時降級計算，輸出包含 `days_used` | `data/raw/` | `data/rolling/YYYYMMDD_rolling.json` |
+| `scripts/screener/setup_a.py` | 執行 Setup A 篩選邏輯；成交量均額由股價 API 取得 | `tests/fixtures/` 或 `data/rolling/` | `data/screener/screener_result_a_YYYYMMDD.json` |
 | `scripts/screener/create_issues.py` | 為候選股建立 GitHub Issue | screener result JSON | GitHub Issues |
 | `scripts/audit/audit_issue.py` | 驗證 Issue 必填欄位與護欄 | GitHub Issue | Label 變更 + 評論 |
 | `scripts/manager/manager_loop.py` | 大盤急跌與持倉上限監控 | TWSE 大盤 API、Issues | `data/manager/manager_report_YYYYMMDD.json`、Label 變更 |
@@ -63,7 +63,7 @@ graph TD
 
 | 檔案 | 觸發 | 職責 |
 |---|---|---|
-| `00-data-fetch.yml` | `schedule` 每日收盤後 | 執行 data scripts，上傳 institutional-data artifact |
+| `00-data-fetch.yml` | `schedule` 每日收盤後 | 還原前次 artifact，首次執行補抓 25 日、之後只抓當日；執行 data scripts 並上傳 institutional-data artifact |
 | `10-screener-setup-a.yml` | `workflow_run` 於 `00-data-fetch.yml` 成功後 | 執行 Setup A screener 並建立 Issues |
 | `20-manager-loop.yml` | `workflow_run` 於 `00-data-fetch.yml` 成功後 | 執行 manager loop |
 | `30-signal-monitor.yml` | `workflow_run` 於 `20-manager-loop.yml` 成功後 | 執行 signal monitor |
@@ -110,7 +110,9 @@ graph TD
 
 ```
 00-data-fetch.yml
-    └── institutional-data-{run_id}
+    ├── (首次) 補抓 25 個交易日
+    ├── (非首次) 還原前一次 institutional-data-{run_id} artifact
+    └── 產生並上傳 institutional-data-{run_id}
         ├── data/raw/YYYYMMDD.json
         └── data/rolling/YYYYMMDD_rolling.json
 

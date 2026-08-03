@@ -35,7 +35,7 @@ graph TD
 |---|---|---|
 | Phase 0 | 資料標準化 | 已產出 `tests/fixtures/oracle_input_*.json` 與 `oracle_output_*.json`，作為後續開發與測試的黃金標準。 |
 | Phase 1 | 倉庫基礎建設 | 建立資料夾結構、Issue Templates、Labels、Projects Board 設定與本說明文件。 |
-| Phase 2 | 數據管線 | `scripts/data/` 負責每日從 TWSE 等來源取得原始數據，並輸出到 fixtures 格式。 |
+| Phase 2 | 數據管線 | `scripts/data/` 從 TWSE 取得機構籌碼資料，支援 `--backfill-days` 補抓最近 N 個交易日；`compute_rolling.py` 計算最近 20 日滾動指標，檔案不足時自動降級並在輸出標註 `days_used`。 |
 | Phase 3 | 篩選器 | `scripts/screener/` 讀取標準化資料，依 Setup A/B/C 條件產生候選股 Issue。 |
 | Phase 4 | 審核與護欄 | `scripts/audit/` 在 Issue 建立或標記時執行，檢查必填欄位與策略護欄。 |
 | Phase 5 | 報告與追蹤 | `scripts/report/` 產生每日持倉監控、出場提醒，以及每週五自動推送到 GitHub Pages 的績效儀表板。 |
@@ -66,7 +66,7 @@ tests/
 
 | Workflow | 觸發時機 | 用途 |
 |---|---|---|
-| `00-data-fetch.yml` | 每個交易日收盤後（約 16:30）透過 `schedule` 觸發 | 執行 `scripts/data/` 取得當日數據 |
+| `00-data-fetch.yml` | 每個交易日收盤後（約 16:30）透過 `schedule` 觸發 | 還原前次成功的 `institutional-data` artifact；首次執行補抓 25 個交易日，之後只抓當日；執行 `scripts/data/` 產生 `data/raw/` 與 `data/rolling/` 後上傳 artifact |
 | `10-screener-setup-a.yml` | `00-data-fetch.yml` 成功後 `workflow_run` 觸發 | 執行 `scripts/screener/` 產生 Setup A 候選股 Issue |
 | `20-manager-loop.yml` | `00-data-fetch.yml` 成功後 `workflow_run` 觸發 | 執行 `scripts/manager/` 檢查大盤與持倉上限護欄 |
 | `30-signal-monitor.yml` | `20-manager-loop.yml` 成功後 `workflow_run` 觸發 | 執行 `scripts/monitor/` 檢查出場條件並標記 `exit-triggered` |
