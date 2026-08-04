@@ -77,7 +77,7 @@ def test_fetch_api_error_continues(
     ):
         exit_code = fetch_module.main(backfill_days=2)
 
-    assert exit_code == 0
+    assert exit_code == 1
     assert _raw_files(str(raw_dir)) == ["20260730.json", "20260731.json"]
 
 
@@ -97,3 +97,62 @@ def test_fetch_skips_weekend(fetch_module, tmp_path, monkeypatch, patch_module_t
     assert "20260802.json" not in files  # Sunday
     assert "20260801.json" not in files  # Saturday
     assert all(int(f.replace(".json", "")) not in {20260801, 20260802} for f in files)
+
+
+def test_backfill_skips_date_when_twse_returns_empty_data(
+    fetch_module, tmp_path, monkeypatch, patch_module_today
+):
+    """A date returning an empty TWSE array is skipped and backfill continues."""
+    raw_dir = tmp_path / "raw"
+    monkeypatch.setattr(fetch_module, "_RAW_OUTPUT_DIR", str(raw_dir))
+
+    mock_get = make_mock_get(response_by_date={"20260803": {"stat": "OK", "data": []}})
+
+    with patch_module_today(fetch_module, TEST_DATE_MONDAY), patch.object(
+        fetch_module.requests, "get", mock_get
+    ):
+        exit_code = fetch_module.main(backfill_days=1)
+
+    assert exit_code == 1
+    assert _raw_files(str(raw_dir)) == ["20260731.json"]
+
+
+def test_backfill_skips_date_when_twse_returns_invalid_format(
+    fetch_module, tmp_path, monkeypatch, patch_module_today
+):
+    """A date with a TWSE response missing required fields is skipped."""
+    raw_dir = tmp_path / "raw"
+    monkeypatch.setattr(fetch_module, "_RAW_OUTPUT_DIR", str(raw_dir))
+
+    invalid_response = {
+        "stat": "OK",
+        "fields": ["證券名稱"],
+        "data": [],
+    }
+    mock_get = make_mock_get(response_by_date={"20260803": invalid_response})
+
+    with patch_module_today(fetch_module, TEST_DATE_MONDAY), patch.object(
+        fetch_module.requests, "get", mock_get
+    ):
+        exit_code = fetch_module.main(backfill_days=1)
+
+    assert exit_code == 1
+    assert _raw_files(str(raw_dir)) == ["20260731.json"]
+
+
+def test_backfill_continues_after_skip_and_returns_exit_code_1(
+    fetch_module, tmp_path, monkeypatch, patch_module_today
+):
+    """Backfill continues fetching remaining days after skipping an invalid date."""
+    raw_dir = tmp_path / "raw"
+    monkeypatch.setattr(fetch_module, "_RAW_OUTPUT_DIR", str(raw_dir))
+
+    mock_get = make_mock_get(response_by_date={"20260803": {"stat": "OK", "data": []}})
+
+    with patch_module_today(fetch_module, TEST_DATE_MONDAY), patch.object(
+        fetch_module.requests, "get", mock_get
+    ):
+        exit_code = fetch_module.main(backfill_days=2)
+
+    assert exit_code == 1
+    assert _raw_files(str(raw_dir)) == ["20260730.json", "20260731.json"]

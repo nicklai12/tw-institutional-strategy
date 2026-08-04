@@ -1,0 +1,37 @@
+{
+  "stage": 1,
+  "agent": "偵察員",
+  "completed_at": "2026-08-04T00:00:00+08:00",
+
+  "call_chain": [
+    {"function": "_backfill_trading_days", "line": 204, "note": "在 while 迴圈中呼叫 fetch_institutional(candidate)"},
+    {"function": "fetch_institutional", "line": 158, "note": "呼叫 parse_institutional_response 進行 JSON 解析"}
+  ],
+
+  "parse_field_access": {
+    "line": 72,
+    "code_snippet": "raise ValueError(f\"Missing required field in TWSE response: {name}\")",
+    "how_it_fails": "parse_institutional_response 第 66-67 行先從 response_data 取出 fields 與 data，然後在第 70-73 行迴圈檢查 _REQUIRED_FIELDS（含「證券代號」）是否都在 fields 中。若 TWSE 回傳空資料或格式異常導致 fields 不存在或缺少該欄位，程式會在第 72 行 raise ValueError，而這個 ValueError 未被上層 catch。"
+  },
+
+  "existing_defenses": [
+    {"location": "fetch_institutional:138-139", "description": "檢查是否為交易日，非交易日 raise RuntimeError(\"SKIP\")"},
+    {"location": "fetch_institutional:145-151", "description": "catch requests 連線異常與 JSON 解析異常，轉為 RuntimeError"},
+    {"location": "fetch_institutional:153-154", "description": "檢查 response_data 是否為 dict，否則 raise RuntimeError(\"API_INVALID_RESPONSE\")"},
+    {"location": "parse_institutional_response:70-73", "description": "檢查 required fields 是否齊全，缺欄位時 raise ValueError"},
+    {"location": "parse_institutional_response:77-78", "description": "跳過欄位數不足的 row"},
+    {"location": "parse_institutional_response:80-87", "description": "用 try/except 忽略數值轉換失敗的 row"},
+    {"location": "fetch_institutional:162-163", "description": "檢查 record_count 是否低於 _MIN_RECORD_COUNT，是則 raise RuntimeError(\"TOO_FEW_RECORDS\")"},
+    {"location": "_backfill_trading_days:203-208", "description": "catch RuntimeError，將失敗日期記錄 warning 後繼續下一日"}
+  ],
+
+  "gap_summary": "parse_institutional_response 在欄位缺失時抛出 ValueError，但 fetch_institutional 與 _backfill_trading_days 只處理 RuntimeError；同時目前完全沒有檢查 TWSE 回傳的 stat 欄位。因此當 API 回傳 dict 但 fields 缺失（例如 stat != \"OK\" 或假日/異常資料）時，ValueError 會直接向上傳播，導致 backfill 迴圈中斷、程式 crash，而非被當成單日失敗跳過。",
+
+  "recommended_fix_location": {
+    "function": "fetch_institutional",
+    "line_range": "153-165",
+    "reason": "fetch_institutional 已負責 API 互動與錯誤轉換為 RuntimeError，是最適合統一處理 API 回傳語意（stat）與解析異常的位置；在此處將 parse_institutional_response 的 ValueError 轉成 RuntimeError，或先檢查 stat != \"OK\"，可確保 _backfill_trading_days 的 RuntimeError catch 能正確跳過單日失敗。"
+  },
+
+  "side_notes": ["is_trading_day 僅用 weekday 判斷，未處理國定假日"]
+}

@@ -153,11 +153,17 @@ def fetch_institutional(date: datetime.date) -> dict[str, Any]:
     if not isinstance(response_data, dict):
         raise RuntimeError("API_INVALID_RESPONSE")
 
+    if response_data.get("stat") != "OK":
+        raise RuntimeError("STAT_NOT_OK")
+
     fetch_date = _format_date(date)
     fetch_timestamp = datetime.datetime.now().isoformat()
-    parsed = parse_institutional_response(
-        response_data, fetch_date, source_url, fetch_timestamp
-    )
+    try:
+        parsed = parse_institutional_response(
+            response_data, fetch_date, source_url, fetch_timestamp
+        )
+    except ValueError as exc:
+        raise RuntimeError(str(exc)) from exc
 
     if parsed["record_count"] <= _MIN_RECORD_COUNT:
         raise RuntimeError("TOO_FEW_RECORDS")
@@ -178,12 +184,14 @@ def _backfill_trading_days(backfill_days: int, today: datetime.date) -> int:
     """Fetch up to backfill_days recent trading days, skipping existing files.
 
     Non-trading days are skipped. Days that fail the TWSE API are logged as
-    warnings and skipped so the loop can continue. Returns shell exit code 0.
+    warnings and skipped so the loop can continue. Returns shell exit code 0
+    on full success, or 1 if at least one day failed.
     """
     os.makedirs(_RAW_OUTPUT_DIR, exist_ok=True)
 
     success_count = 0
     skipped_count = 0
+    failed_count = 0
     candidate = today
 
     while success_count + skipped_count < backfill_days:
@@ -203,7 +211,10 @@ def _backfill_trading_days(backfill_days: int, today: datetime.date) -> int:
         try:
             result = fetch_institutional(candidate)
         except RuntimeError as exc:
-            print(f"WARNING: {compact} 抓取失敗 ({exc})，跳過")
+            fetch_date = _format_date(candidate)
+            reason = str(exc)
+            print(f"SKIP: {fetch_date} TWSE 回傳無效資料（{reason}），跳過此日")
+            failed_count += 1
             candidate -= datetime.timedelta(days=1)
             continue
 
@@ -219,7 +230,7 @@ def _backfill_trading_days(backfill_days: int, today: datetime.date) -> int:
         f"OK: backfill 完成，成功寫入 {success_count} 個交易日，"
         f"跳過已存在 {skipped_count} 個"
     )
-    return 0
+    return 1 if failed_count > 0 else 0
 
 
 def main(backfill_days: int = 0) -> int:

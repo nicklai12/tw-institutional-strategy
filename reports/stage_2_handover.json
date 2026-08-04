@@ -1,0 +1,20 @@
+{
+  "stage": 2,
+  "agent": "修復員",
+  "completed_at": "2026-08-04T00:00:00+08:00",
+
+  "change_summary": "在 fetch_institutional 將 parse_institutional_response 的 ValueError 與 stat!=OK 轉為 RuntimeError，並讓 _backfill_trading_days 跳過無效日期、記錄 SKIP 警告，最終有任一日失敗則回傳 exit code 1。",
+
+  "diff": "diff --git a/scripts/data/fetch_institutional.py b/scripts/data/fetch_institutional.py\nindex bc8ff22..7c93dcc 100644\n--- a/scripts/data/fetch_institutional.py\n+++ b/scripts/data/fetch_institutional.py\n@@ -153,11 +153,17 @@ def fetch_institutional(date: datetime.date) -> dict[str, Any]:\n     if not isinstance(response_data, dict):\n         raise RuntimeError(\"API_INVALID_RESPONSE\")\n \n+    if response_data.get(\"stat\") != \"OK\":\n+        raise RuntimeError(\"STAT_NOT_OK\")\n+\n     fetch_date = _format_date(date)\n     fetch_timestamp = datetime.datetime.now().isoformat()\n-    parsed = parse_institutional_response(\n-        response_data, fetch_date, source_url, fetch_timestamp\n-    )\n+    try:\n+        parsed = parse_institutional_response(\n+            response_data, fetch_date, source_url, fetch_timestamp\n+        )\n+    except ValueError as exc:\n+        raise RuntimeError(str(exc)) from exc\n \n     if parsed[\"record_count\"] <= _MIN_RECORD_COUNT:\n         raise RuntimeError(\"TOO_FEW_RECORDS\")\n@@ -178,12 +184,14 @@ def _backfill_trading_days(backfill_days: int, today: datetime.date) -> int:\n     \"\"\"Fetch up to backfill_days recent trading days, skipping existing files.\n \n     Non-trading days are skipped. Days that fail the TWSE API are logged as\n-    warnings and skipped so the loop can continue. Returns shell exit code 0.\n+    warnings and skipped so the loop can continue. Returns shell exit code 0\n+    on full success, or 1 if at least one day failed.\n     \"\"\"\n     os.makedirs(_RAW_OUTPUT_DIR, exist_ok=True)\n \n     success_count = 0\n     skipped_count = 0\n+    failed_count = 0\n     candidate = today\n \n     while success_count + skipped_count < backfill_days:\n@@ -203,7 +211,10 @@ def _backfill_trading_days(backfill_days: int, today: datetime.date) -> int:\n         try:\n             result = fetch_institutional(candidate)\n         except RuntimeError as exc:\n-            print(f\"WARNING: {compact} 抓取失敗 ({exc})，跳過\")\n+            fetch_date = _format_date(candidate)\n+            reason = str(exc)\n+            print(f\"SKIP: {fetch_date} TWSE 回傳無效資料（{reason}），跳過此日\")\n+            failed_count += 1\n             candidate -= datetime.timedelta(days=1)\n             continue\n \n@@ -219,7 +230,7 @@ def _backfill_trading_days(backfill_days: int, today: datetime.date) -> int:\n         f\"OK: backfill 完成，成功寫入 {success_count} 個交易日，\"\n         f\"跳過已存在 {skipped_count} 個\"\n     )\n-    return 0\n+    return 1 if failed_count > 0 else 0\n\ndiff --git a/tests/test_fetch_institutional.py b/tests/test_fetch_institutional.py\nindex b2a93a0..6b5a1fe 100644\n--- a/tests/test_fetch_institutional.py\n+++ b/tests/test_fetch_institutional.py\n@@ -77,7 +77,7 @@ def test_fetch_api_error_continues(\n     ):\n         exit_code = fetch_module.main(backfill_days=2)\n \n-    assert exit_code == 0\n+    assert exit_code == 1\n     assert _raw_files(str(raw_dir)) == [\"20260730.json\", \"20260731.json\"]",
+
+  "changed_lines_count": 23,
+
+  "why_not_changed": {
+    "parse_institutional_response": "該函式的職責是解析並驗證 TWSE 回傳結構；遇到缺少必要欄位時 raise ValueError 是正確設計，應由呼叫方（fetch_institutional）負責轉換為可預期的 RuntimeError，而非在這裡吞掉或改變例外型別。",
+    "other_locations": "parse_institutional_response 過低層，不該知道 backfill 語境；_backfill_trading_days 過高層，只應處理 RuntimeError 並決定是否繼續。fetch_institutional 是 API 邊界，最適合統一處理連線、JSON、stat、schema 等錯誤並轉為 RuntimeError。"
+  },
+
+  "exit_code_behavior": "當某日 TWSE 回傳無效資料（stat 不為 OK 或 fields 缺失導致 ValueError）時，fetch_institutional 會 raise RuntimeError；_backfill_trading_days 捕獲後印出 SKIP 警告、將 failed_count 加一，並繼續嘗試下一個交易日。backfill 迴圈不會中斷，仍會盡力補足 backfill_days 個交易日。最後若 failed_count > 0 則回傳 exit code 1，否則回傳 0。",
+
+  "side_notes": ["is_trading_day 仍只用 weekday 判斷，未處理國定假日；warning 的 reason 會顯示內部錯誤碼如 API_CONNECTION_FAILED、STAT_NOT_OK、MISSING_FIELDS 等"]
+}
