@@ -1,0 +1,70 @@
+{
+  "stage": 4,
+  "agent": "審計員",
+  "completed_at": "2026-08-04T00:00:00+08:00",
+
+  "scorecard": [
+    {
+      "item": "改動範圍是否精準？",
+      "evidence": "防禦邏輯（stat 檢查、try/except ValueError）位於 fetch_institutional:156-166，符合 Stage 1 建議位置。_backfill_trading_days 的改動是為了實現規定的 warning 格式與 exit code 1 行為。",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "item": "是否有「順手改善」非必要的程式碼？",
+      "evidence": "diff 僅新增 stat 檢查、包覆 parse_institutional_response 的 try/except、failed_count 追蹤、warning 訊息與 return 條件；無重構、無格式調整、無無關註解變更。",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "item": "function signature 是否不變？",
+      "evidence": "fetch_institutional(date: datetime.date) -> dict[str, Any] 與 _backfill_trading_days(backfill_days: int, today: datetime.date) -> int 均未改變；未新增 function 或 class。",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "item": "測試是否真的重現了 bug？",
+      "evidence": "將 production code 回復至原始版本後執行三個新測試，皆因 parse_institutional_response 抛出 ValueError（Missing required field in TWSE response: 證券代號）而失敗，與 GitHub Actions 錯誤一致。",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "item": "測試是否真的驗證了修復？",
+      "evidence": "套用修復後執行 pytest tests/test_fetch_institutional.py -v，8 個測試全部通過；新測試驗證了無效日期被跳過、backfill 繼續、且 exit_code == 1。",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "item": "exit code 行為是否符合規格？",
+      "evidence": "_backfill_trading_days 新增 failed_count，最後 return 1 if failed_count > 0 else 0；test_backfill_continues_after_skip_and_returns_exit_code_1 與 test_fetch_api_error_continues 皆 assert exit_code == 1。",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "item": "warning 訊息格式是否符合規格？",
+      "evidence": "_backfill_trading_days:216 印出 f\"SKIP: {fetch_date} TWSE 回傳無效資料（{reason}），跳過此日\"，與 Stage 2 指定格式一致。",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "item": "既有測試是否保持不變？",
+      "evidence": "既有測試 test_fetch_api_error_continues 的斷言由 assert exit_code == 0 調整為 assert exit_code == 1；此變更已由主編確認為規格更新，非違規改動。",
+      "pass": true,
+      "note": "主編批准：exit code 1 為新規格，既有測試隨之更新屬合理範圍。"
+    },
+    {
+      "item": "是否有新增不必要的 function？",
+      "evidence": "未新增任何 function、class 或抽象層。",
+      "pass": true,
+      "note": ""
+    }
+  ],
+
+  "overall_verdict": "APPROVE",
+
+  "reject_reasons": [],
+
+  "return_to_stage": null,
+
+  "side_notes": ["全數 Scorecard 項目通過；修復可進入 PR。"]
+}

@@ -1,0 +1,40 @@
+{
+  "stage": 3,
+  "agent": "測試員",
+  "completed_at": "2026-08-04T00:00:00+08:00",
+
+  "test_file_path": "tests/test_fetch_institutional.py",
+
+  "test_code": "\"\"\"Tests for scripts/data/fetch_institutional.py backfill behavior.\"\"\"\n\nimport json\nimport os\nfrom unittest.mock import patch\n\nfrom tests.conftest import TEST_DATE_MONDAY, make_mock_get\n\n\ndef _raw_files(raw_dir: str) -> list[str]:\n    return sorted(f for f in os.listdir(raw_dir) if f.endswith(\".json\"))\n\n\ndef test_fetch_single_day(fetch_module, tmp_path, monkeypatch, patch_module_today):\n    \"\"\"--backfill-days 0 fetches only today on a trading day.\"\"\"\n    raw_dir = tmp_path / \"raw\"\n    monkeypatch.setattr(fetch_module, \"_RAW_OUTPUT_DIR\", str(raw_dir))\n\n    with patch_module_today(fetch_module, TEST_DATE_MONDAY), patch.object(\n        fetch_module.requests, \"get\", make_mock_get()\n    ):\n        exit_code = fetch_module.main(backfill_days=0)\n\n    assert exit_code == 0\n    assert _raw_files(str(raw_dir)) == [\"20260803.json\"]\n\n    payload = json.loads((raw_dir / \"20260803.json\").read_text(encoding=\"utf-8\"))\n    assert payload[\"fetch_date\"] == \"2026-08-03\"\n\n\ndef test_fetch_backfill_n_days(fetch_module, tmp_path, monkeypatch, patch_module_today):\n    \"\"\"--backfill-days 5 writes exactly 5 recent trading-day raw files.\"\"\"\n    raw_dir = tmp_path / \"raw\"\n    monkeypatch.setattr(fetch_module, \"_RAW_OUTPUT_DIR\", str(raw_dir))\n\n    with patch_module_today(fetch_module, TEST_DATE_MONDAY), patch.object(\n        fetch_module.requests, \"get\", make_mock_get()\n    ):\n        exit_code = fetch_module.main(backfill_days=5)\n\n    assert exit_code == 0\n    assert _raw_files(str(raw_dir)) == [\n        \"20260728.json\",\n        \"20260729.json\",\n        \"20260730.json\",\n        \"20260731.json\",\n        \"20260803.json\",\n    ]\n\n\ndef test_fetch_idempotent(fetch_module, tmp_path, monkeypatch, patch_module_today):\n    \"\"\"Running the same backfill twice produces only one file per trading day.\"\"\"\n    raw_dir = tmp_path / \"raw\"\n    monkeypatch.setattr(fetch_module, \"_RAW_OUTPUT_DIR\", str(raw_dir))\n\n    with patch_module_today(fetch_module, TEST_DATE_MONDAY), patch.object(\n        fetch_module.requests, \"get\", make_mock_get()\n    ):\n        assert fetch_module.main(backfill_days=1) == 0\n        assert fetch_module.main(backfill_days=1) == 0\n\n    assert _raw_files(str(raw_dir)) == [\"20260803.json\"]\n\n\ndef test_fetch_api_error_continues(\n    fetch_module, tmp_path, monkeypatch, patch_module_today\n):\n    \"\"\"A single-day API failure is skipped and backfill continues.\"\"\"\n    raw_dir = tmp_path / \"raw\"\n    monkeypatch.setattr(fetch_module, \"_RAW_OUTPUT_DIR\", str(raw_dir))\n\n    # 20260803 (today) fails; the loop continues to 20260731 and 20260730.\n    mock_get = make_mock_get(fail_dates={\"20260803\"})\n\n    with patch_module_today(fetch_module, TEST_DATE_MONDAY), patch.object(\n        fetch_module.requests, \"get\", mock_get\n    ):\n        exit_code = fetch_module.main(backfill_days=2)\n\n    assert exit_code == 1\n    assert _raw_files(str(raw_dir)) == [\"20260730.json\", \"20260731.json\"]\n\n\ndef test_fetch_skips_weekend(fetch_module, tmp_path, monkeypatch, patch_module_today):\n    \"\"\"Backfill skips weekends and only writes weekday files.\"\"\"\n    raw_dir = tmp_path / \"raw\"\n    monkeypatch.setattr(fetch_module, \"_RAW_OUTPUT_DIR\", str(raw_dir))\n\n    with patch_module_today(fetch_module, TEST_DATE_MONDAY), patch.object(\n        fetch_module.requests, \"get\", make_mock_get()\n    ):\n        exit_code = fetch_module.main(backfill_days=5)\n\n    assert exit_code == 0\n    files = _raw_files(str(raw_dir))\n    assert len(files) == 5\n    assert \"20260802.json\" not in files  # Sunday\n    assert \"20260801.json\" not in files  # Saturday\n    assert all(int(f.replace(\".json\", \"\")) not in {20260801, 20260802} for f in files)\n\n\ndef test_backfill_skips_date_when_twse_returns_empty_data(\n    fetch_module, tmp_path, monkeypatch, patch_module_today\n):\n    \"\"\"A date returning an empty TWSE array is skipped and backfill continues.\"\"\"\n    raw_dir = tmp_path / \"raw\"\n    monkeypatch.setattr(fetch_module, \"_RAW_OUTPUT_DIR\", str(raw_dir))\n\n    mock_get = make_mock_get(response_by_date={\"20260803\": {\"stat\": \"OK\", \"data\": []}})\n\n    with patch_module_today(fetch_module, TEST_DATE_MONDAY), patch.object(\n        fetch_module.requests, \"get\", mock_get\n    ):\n        exit_code = fetch_module.main(backfill_days=1)\n\n    assert exit_code == 1\n    assert _raw_files(str(raw_dir)) == [\"20260731.json\"]\n\n\ndef test_backfill_skips_date_when_twse_returns_invalid_format(\n    fetch_module, tmp_path, monkeypatch, patch_module_today\n):\n    \"\"\"A date with a TWSE response missing required fields is skipped.\"\"\"\n    raw_dir = tmp_path / \"raw\"\n    monkeypatch.setattr(fetch_module, \"_RAW_OUTPUT_DIR\", str(raw_dir))\n\n    invalid_response = {\n        \"stat\": \"OK\",\n        \"fields\": [\"證券名稱\"],\n        \"data\": [],\n    }\n    mock_get = make_mock_get(response_by_date={\"20260803\": invalid_response})\n\n    with patch_module_today(fetch_module, TEST_DATE_MONDAY), patch.object(\n        fetch_module.requests, \"get\", mock_get\n    ):\n        exit_code = fetch_module.main(backfill_days=1)\n\n    assert exit_code == 1\n    assert _raw_files(str(raw_dir)) == [\"20260731.json\"]\n\n\ndef test_backfill_continues_after_skip_and_returns_exit_code_1(\n    fetch_module, tmp_path, monkeypatch, patch_module_today\n):\n    \"\"\"Backfill continues fetching remaining days after skipping an invalid date.\"\"\"\n    raw_dir = tmp_path / \"raw\"\n    monkeypatch.setattr(fetch_module, \"_RAW_OUTPUT_DIR\", str(raw_dir))\n\n    mock_get = make_mock_get(response_by_date={\"20260803\": {\"stat\": \"OK\", \"data\": []}})\n\n    with patch_module_today(fetch_module, TEST_DATE_MONDAY), patch.object(\n        fetch_module.requests, \"get\", mock_get\n    ):\n        exit_code = fetch_module.main(backfill_days=2)\n\n    assert exit_code == 1\n    assert _raw_files(str(raw_dir)) == [\"20260730.json\", \"20260731.json\"]\n",
+
+  "test_cases": [
+    {
+      "name": "test_backfill_skips_date_when_twse_returns_empty_data",
+      "scenario": "TWSE 對 2026-08-03 回傳空陣列 {\"stat\": \"OK\", \"data\": []}，沒有 fields",
+      "mock_setup": "make_mock_get(response_by_date={\"20260803\": {\"stat\": \"OK\", \"data\": []}})",
+      "assertion": "exit_code == 1，且 20260803.json 未寫入，backfill 繼續寫入 20260731.json",
+      "expected_result_before_fix": "FAIL",
+      "expected_result_after_fix": "PASS"
+    },
+    {
+      "name": "test_backfill_skips_date_when_twse_returns_invalid_format",
+      "scenario": "TWSE 對 2026-08-03 回傳缺少 證券代號 等必要欄位的 response",
+      "mock_setup": "make_mock_get(response_by_date={\"20260803\": {\"stat\": \"OK\", \"fields\": [\"證券名稱\"], \"data\": []}})",
+      "assertion": "exit_code == 1，且 20260803.json 未寫入，backfill 繼續寫入 20260731.json",
+      "expected_result_before_fix": "FAIL",
+      "expected_result_after_fix": "PASS"
+    },
+    {
+      "name": "test_backfill_continues_after_skip_and_returns_exit_code_1",
+      "scenario": "2026-08-03 回傳空陣列，但後續交易日資料正常，backfill 需要補齊 2 個交易日",
+      "mock_setup": "make_mock_get(response_by_date={\"20260803\": {\"stat\": \"OK\", \"data\": []}})，其餘使用預設正常 response",
+      "assertion": "exit_code == 1，且仍成功寫入 20260731.json 與 20260730.json 共 2 個交易日",
+      "expected_result_before_fix": "FAIL",
+      "expected_result_after_fix": "PASS"
+    }
+  ],
+
+  "run_command": "pytest tests/test_fetch_institutional.py -v",
+
+  "side_notes": ["既有測試 test_fetch_api_error_continues 已因修復後 exit code 改為 1 而由修復員同步更新為 assert exit_code == 1，未刪除該測試"]
+}
