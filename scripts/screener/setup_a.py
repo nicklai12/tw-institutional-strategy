@@ -3,7 +3,6 @@
 import datetime
 import json
 import os
-import subprocess
 import sys
 import time
 from collections import defaultdict
@@ -327,12 +326,6 @@ def main() -> int:
 
     print(
         f"OK: {today_str} 篩選完成，共 {len(candidates)} 檔，已寫入 {output_path}"
-    )
-
-    # Step 9: invoke issue creation script.
-    subprocess.run(
-        [sys.executable, "scripts/screener/create_issues.py", output_path],
-        check=False,
     )
 
     return 0
