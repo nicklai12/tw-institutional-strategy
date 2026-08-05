@@ -63,9 +63,9 @@ graph TD
 
 | 檔案 | 觸發 | 職責 |
 |---|---|---|
-| `00-data-fetch.yml` | `schedule` 每日收盤後 | 還原前次 artifact，首次執行補抓 25 日、之後只抓當日；執行 data scripts 並上傳 institutional-data artifact |
-| `10-screener-setup-a.yml` | `workflow_run` 於 `00-data-fetch.yml` 成功後 | 執行 Setup A screener 並建立 Issues |
-| `20-manager-loop.yml` | `workflow_run` 於 `00-data-fetch.yml` 成功後 | 執行 manager loop |
+| `00-data-fetch.yml` | `schedule` 每日收盤後 | 還原前次 artifact，首次執行補抓 25 日、之後只抓當日；執行 data scripts；不論 fetch 是否因跳過日期而 exit 1，皆上傳 institutional-data artifact（if: always()） |
+| `10-screener-setup-a.yml` | `workflow_run` 於 `00-data-fetch.yml` 完成後 | 當 upstream conclusion 為 success 或 failure 時執行；排除 cancelled。執行 Setup A screener 並建立 Issues |
+| `20-manager-loop.yml` | `workflow_run` 於 `00-data-fetch.yml` 完成後 | 當 upstream conclusion 為 success 或 failure 時執行；排除 cancelled。執行 manager loop |
 | `30-signal-monitor.yml` | `workflow_run` 於 `20-manager-loop.yml` 成功後 | 執行 signal monitor |
 | `50-audit-check.yml` | Issue 建立/Label 變更、`/re-audit` 留言 | 執行 audit |
 | `60-performance-report.yml` | `schedule` 每週五 18:30 TW、`workflow_dispatch` | 產生報告並部署到 gh-pages |

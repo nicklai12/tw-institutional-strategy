@@ -320,9 +320,9 @@
 
 | Workflow | 觸發條件 | 說明 |
 |---|---|---|
-| `00-data-fetch.yml` | `schedule` | 每個交易日收盤後約 16:30；首次執行補抓 25 日，之後還原前次 artifact 並只抓當日 |
-| `10-screener-setup-a.yml` | `workflow_run` | `00-data-fetch.yml` 成功後 |
-| `20-manager-loop.yml` | `workflow_run` | `00-data-fetch.yml` 成功後 |
+| `00-data-fetch.yml` | `schedule` | 每個交易日收盤後約 16:30；首次執行補抓 25 日，之後還原前次 artifact 並只抓當日；fetch 因跳過日期 exit 1 時仍上傳 artifact（if: always()） |
+| `10-screener-setup-a.yml` | `workflow_run` | `00-data-fetch.yml` 完成後，且 conclusion 為 success 或 failure 時執行（排除 cancelled） |
+| `20-manager-loop.yml` | `workflow_run` | `00-data-fetch.yml` 完成後，且 conclusion 為 success 或 failure 時執行（排除 cancelled） |
 | `30-signal-monitor.yml` | `workflow_run` | `20-manager-loop.yml` 成功後 |
 | `50-audit-check.yml` | `issues` / `issue_comment` | Issue 被標記 `screened`/`signal-confirmed`/`holding`，或留言 `/re-audit` |
 | `60-performance-report.yml` | `schedule` / `workflow_dispatch` | 每週五台灣時間 18:30，或可手動觸發 |
