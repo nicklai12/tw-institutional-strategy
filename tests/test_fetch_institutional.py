@@ -65,7 +65,7 @@ def test_fetch_idempotent(fetch_module, tmp_path, monkeypatch, patch_module_toda
 def test_fetch_api_error_continues(
     fetch_module, tmp_path, monkeypatch, patch_module_today
 ):
-    """A single-day API failure is skipped and backfill continues."""
+    """A single-day API failure is skipped and backfill continues without failing."""
     raw_dir = tmp_path / "raw"
     monkeypatch.setattr(fetch_module, "_RAW_OUTPUT_DIR", str(raw_dir))
 
@@ -77,7 +77,7 @@ def test_fetch_api_error_continues(
     ):
         exit_code = fetch_module.main(backfill_days=2)
 
-    assert exit_code == 1
+    assert exit_code == 0
     assert _raw_files(str(raw_dir)) == ["20260730.json", "20260731.json"]
 
 
@@ -102,7 +102,7 @@ def test_fetch_skips_weekend(fetch_module, tmp_path, monkeypatch, patch_module_t
 def test_backfill_skips_date_when_twse_returns_empty_data(
     fetch_module, tmp_path, monkeypatch, patch_module_today
 ):
-    """A date returning an empty TWSE array is skipped and backfill continues."""
+    """A date returning an empty TWSE array is skipped without failing backfill."""
     raw_dir = tmp_path / "raw"
     monkeypatch.setattr(fetch_module, "_RAW_OUTPUT_DIR", str(raw_dir))
 
@@ -113,14 +113,14 @@ def test_backfill_skips_date_when_twse_returns_empty_data(
     ):
         exit_code = fetch_module.main(backfill_days=1)
 
-    assert exit_code == 1
+    assert exit_code == 0
     assert _raw_files(str(raw_dir)) == ["20260731.json"]
 
 
 def test_backfill_skips_date_when_twse_returns_invalid_format(
     fetch_module, tmp_path, monkeypatch, patch_module_today
 ):
-    """A date with a TWSE response missing required fields is skipped."""
+    """A date with a TWSE response missing required fields is skipped without failing."""
     raw_dir = tmp_path / "raw"
     monkeypatch.setattr(fetch_module, "_RAW_OUTPUT_DIR", str(raw_dir))
 
@@ -136,11 +136,11 @@ def test_backfill_skips_date_when_twse_returns_invalid_format(
     ):
         exit_code = fetch_module.main(backfill_days=1)
 
-    assert exit_code == 1
+    assert exit_code == 0
     assert _raw_files(str(raw_dir)) == ["20260731.json"]
 
 
-def test_backfill_continues_after_skip_and_returns_exit_code_1(
+def test_backfill_continues_after_skip_and_returns_exit_code_0(
     fetch_module, tmp_path, monkeypatch, patch_module_today
 ):
     """Backfill continues fetching remaining days after skipping an invalid date."""
@@ -154,5 +154,5 @@ def test_backfill_continues_after_skip_and_returns_exit_code_1(
     ):
         exit_code = fetch_module.main(backfill_days=2)
 
-    assert exit_code == 1
+    assert exit_code == 0
     assert _raw_files(str(raw_dir)) == ["20260730.json", "20260731.json"]

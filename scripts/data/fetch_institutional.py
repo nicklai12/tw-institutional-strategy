@@ -183,15 +183,15 @@ def _write_raw_file(date: datetime.date, result: dict[str, Any]) -> str:
 def _backfill_trading_days(backfill_days: int, today: datetime.date) -> int:
     """Fetch up to backfill_days recent trading days, skipping existing files.
 
-    Non-trading days are skipped. Days that fail the TWSE API are logged as
-    warnings and skipped so the loop can continue. Returns shell exit code 0
-    on full success, or 1 if at least one day failed.
+    Non-trading days and dates with no usable TWSE data are skipped and logged
+    as warnings so the loop can continue. The workflow is not failed because of
+    a missing historical date. Returns shell exit code 0.
     """
     os.makedirs(_RAW_OUTPUT_DIR, exist_ok=True)
 
     success_count = 0
     skipped_count = 0
-    failed_count = 0
+    skipped_invalid_count = 0
     candidate = today
 
     while success_count + skipped_count < backfill_days:
@@ -214,7 +214,7 @@ def _backfill_trading_days(backfill_days: int, today: datetime.date) -> int:
             fetch_date = _format_date(candidate)
             reason = str(exc)
             print(f"SKIP: {fetch_date} TWSE 回傳無效資料（{reason}），跳過此日")
-            failed_count += 1
+            skipped_invalid_count += 1
             candidate -= datetime.timedelta(days=1)
             continue
 
@@ -228,9 +228,9 @@ def _backfill_trading_days(backfill_days: int, today: datetime.date) -> int:
 
     print(
         f"OK: backfill 完成，成功寫入 {success_count} 個交易日，"
-        f"跳過已存在 {skipped_count} 個"
+        f"跳過已存在 {skipped_count} 個，無資料 {skipped_invalid_count} 個"
     )
-    return 1 if failed_count > 0 else 0
+    return 0
 
 
 def main(backfill_days: int = 0) -> int:
