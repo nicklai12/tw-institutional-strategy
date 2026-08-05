@@ -1,0 +1,32 @@
+{
+  "stage": 2,
+  "agent": "修復員",
+  "completed_at": "2026-08-05T08:04:18Z",
+
+  "change_summary": "在 00-data-fetch.yml 的 artifact 上傳步驟加上 if: always()，並在下游 workflow 的觸發 job 加上 conclusion 判斷，使 exit 1 時仍上傳 artifact 並讓下游在 success/failure 時執行、cancelled 時跳過。",
+
+  "diffs": [
+    {
+      "file": ".github/workflows/00-data-fetch.yml",
+      "diff": "diff --git a/.github/workflows/00-data-fetch.yml b/.github/workflows/00-data-fetch.yml\nindex 32317ce..3279973 100644\n--- a/.github/workflows/00-data-fetch.yml\n+++ b/.github/workflows/00-data-fetch.yml\n@@ -91,6 +91,7 @@ jobs:\n           python scripts/data/compute_rolling.py\n \n       - name: Step 4 - Upload artifacts\n+        if: always()\n         uses: actions/upload-artifact@v4\n         with:\n           name: institutional-data-${{ github.run_id }}"
+    },
+    {
+      "file": ".github/workflows/10-screener-setup-a.yml",
+      "diff": "diff --git a/.github/workflows/10-screener-setup-a.yml b/.github/workflows/10-screener-setup-a.yml\nindex 537e684..c35a864 100644\n--- a/.github/workflows/10-screener-setup-a.yml\n+++ b/.github/workflows/10-screener-setup-a.yml\n@@ -15,7 +15,7 @@ jobs:\n   screener-setup-a:\n     runs-on: ubuntu-latest\n     needs: guardrail\n-    if: ${{ needs.guardrail.outputs.passed == 'true' || github.event_name == 'workflow_dispatch' }}\n+    if: ${{ github.event_name == 'workflow_dispatch' || (needs.guardrail.outputs.passed == 'true' && (github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure')) }}\n \n     steps:\n       - name: Checkout repository"
+    },
+    {
+      "file": ".github/workflows/20-manager-loop.yml",
+      "diff": "diff --git a/.github/workflows/20-manager-loop.yml b/.github/workflows/20-manager-loop.yml\nindex b9f4504..c8423d4 100644\n--- a/.github/workflows/20-manager-loop.yml\n+++ b/.github/workflows/20-manager-loop.yml\n@@ -13,7 +13,7 @@ jobs:\n   manager-loop:\n     runs-on: ubuntu-latest\n     needs: guardrail\n-    if: ${{ needs.guardrail.outputs.passed == 'true' || github.event_name == 'workflow_dispatch' }}\n+    if: ${{ github.event_name == 'workflow_dispatch' || (needs.guardrail.outputs.passed == 'true' && (github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure')) }}\n \n     steps:\n       - name: Checkout repository"
+    }
+  ],
+
+  "total_changed_lines": 5,
+
+  "behavior_after_fix": {
+    "scenario_typhoon_skip": "Python 腳本因跳過日期 exit 1 時，00-data-fetch.yml 的 Step 4 因 if: always() 仍會上傳 artifact；下游 workflow 因 workflow_run types 為 [completed] 會被觸發，且 upstream conclusion 為 failure，滿足 'success' || 'failure' 條件，因此下游會執行並可下載到 artifact。",
+    "scenario_cancelled": "人工 cancel 00-data-fetch.yml 時，upstream conclusion 為 cancelled，下游 job 的 if 條件不滿足，因此下游不會執行。",
+    "scenario_normal_success": "正常 exit 0 時，upstream conclusion 為 success，滿足下游條件；artifact 本來就會上傳，因此行為與修改前一致，唯一差異是多了 always() 保護。"
+  },
+
+  "side_notes": []
+}

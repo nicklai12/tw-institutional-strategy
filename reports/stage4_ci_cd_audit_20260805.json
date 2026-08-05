@@ -1,0 +1,67 @@
+{
+  "stage": 4,
+  "agent": "審計員",
+  "completed_at": "2026-08-05T08:21:02Z",
+
+  "scorecard": [
+    {
+      "item": "artifact 上傳 step 是否有 if: always()？",
+      "evidence": "git diff 顯示 .github/workflows/00-data-fetch.yml 的 Step 4 - Upload artifacts 新增一行 `+        if: always()`",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "item": "下游 types 是否改為 [completed]？",
+      "evidence": ".github/workflows/10-screener-setup-a.yml 與 20-manager-loop.yml 的 on.workflow_run.types 目前皆為 [completed]；git diff 未變動此欄位，因原始檔案已為 [completed]",
+      "pass": true,
+      "note": "原始檔案已符合要求，故無 diff 變更"
+    },
+    {
+      "item": "下游 job 是否有 conclusion 判斷？",
+      "evidence": "git diff 顯示 10-screener-setup-a.yml 的 screener-setup-a job 與 20-manager-loop.yml 的 manager-loop job 的 if 條件均包含 `github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure'`",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "item": "cancelled 情境是否被排除？",
+      "evidence": "下游 job 的 if 條件僅允許 'success' 或 'failure'，未包含 'cancelled'；當 upstream conclusion 為 cancelled 時條件評估為 false，job 會被 skipped",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "item": "是否有修改任何 Python 腳本？",
+      "evidence": "git diff --stat 僅列出 3 個 .github/workflows/*.yml 檔案；git status 未顯示任何 .py 檔案變更",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "item": "是否有修改 YAML 中非指定的 step？",
+      "evidence": "所有改動僅為：(1) 00-data-fetch.yml 的 Step 4 新增 if: always()；(2) 10-screener-setup-a.yml 的 screener-setup-a job if 條件；(3) 20-manager-loop.yml 的 manager-loop job if 條件。未更動任何其他 step、job 或 secret",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "item": "正常 exit 0 的行為是否不受影響？",
+      "evidence": "if: always() 在 success 情況下仍會執行 Step 4（與原本行為相同）；下游 job if 條件允許 conclusion='success'，正常 success 仍會觸發 downstream；workflow_dispatch 手動觸發分支也保留",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "item": "Checklist 是否涵蓋三個核心情境？",
+      "evidence": "reports/stage3_ci_cd_test_plan_20260805.json 的 verification_checklist 包含「情境 A：正常交易日」、「情境 B：颱風休市（exit 1）」、「情境 C：人工 Cancel」三項",
+      "pass": true,
+      "note": ""
+    }
+  ],
+
+  "overall_verdict": "APPROVE",
+
+  "reject_reasons": [],
+
+  "return_to_stage": "",
+
+  "side_notes": [
+    "下游 workflow_run.types 在原始檔案中已為 [completed]，因此 Stage 2 diff 中未出現變更，但最終狀態符合要求。",
+    "三份 Stage 交接單（reports/stage1/2/3*.json）目前為 untracked 狀態，不影響 YAML 修復結果。"
+  ]
+}

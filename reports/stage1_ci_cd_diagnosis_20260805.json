@@ -1,0 +1,40 @@
+{
+  "stage": 1,
+  "agent": "偵察員",
+  "completed_at": "2026-08-05T07:55:05Z",
+
+  "artifact_upload_guarded": false,
+  "artifact_upload_step_name": "Step 4 - Upload artifacts（約第 93 行）",
+  "artifact_upload_has_always": false,
+
+  "downstream_trigger_type": {
+    "10-screener-setup-a.yml": "completed",
+    "20-manager-loop.yml": "completed"
+  },
+
+  "failure_chain": [
+    "00-data-fetch.yml 的 Step 2 - Fetch institutional data 執行 python scripts/data/fetch_institutional.py，當有日期被跳過時腳本回傳 exit code 1",
+    "Step 4 - Upload artifacts 未設 if: always()，GitHub Actions 預設會因前一步失敗而跳過 artifact 上傳",
+    "10-screener-setup-a.yml 與 20-manager-loop.yml 的 workflow_run types 為 [completed]，因此 upstream 完成後仍會觸發，但下游 Step 1 下載 artifact 時找不到 institutional-data-${{ github.event.workflow_run.id }} 而失敗",
+    "最終排程雖完成上游執行，但下游因抓不到 artifact 而中斷，整條流水線實質卡死"
+  ],
+
+  "required_changes": [
+    {
+      "file": "00-data-fetch.yml",
+      "step_or_field": "Step 4 - Upload artifacts（約第 93 行）",
+      "current_value": "無 if 條件，預設 only on success",
+      "required_value": "if: always()",
+      "reason": "Python exit 1 是跳過日期的正常通知語意，必須仍上傳 artifact 讓 downstream workflow_run 觸發後有資料可下載"
+    }
+  ],
+
+  "downstream_conclusion_check_needed": true,
+  "conclusion_check_reason": "加上 if: always() 後，exit 1 時 artifact 仍會上傳；但若 upstream 在更前期（checkout、安裝依賴）失敗，if: always() 也無法產出 artifact。下游已使用 types: [completed]，此時會觸發但抓不到 artifact 而失敗。因此下游應加入結論或 artifact 存在性判斷；但不可單純設為 conclusion == 'success'，否則會把「exit 1 但 artifact 已上傳」的正常情況也擋掉。建議在下游第一步檢查 artifact 是否存在，或讓 download-artifact 缺失時優雅跳過。",
+
+  "side_notes": [
+    "10-screener-setup-a.yml 第 4-6 行與 20-manager-loop.yml 第 4-6 行的 workflow_run.types 已為 [completed]，並非 [success]；背景中「下游沒被觸發」的描述與目前 YAML 不符，實際行為是下游會觸發但下載 artifact 失敗。",
+    "00-data-fetch.yml 的 Step 5 - Trigger downstream Screener workflows 仍是 TODO placeholder，與目前 workflow_run 自動觸發機制無關。",
+    "00-data-fetch.yml 的 data-fetch job 有 needs.guardrail 與 if 條件，若 guardrail 失敗會導致整個 data-fetch job 被 skip，此時 downstream 同樣會觸發但抓不到 artifact，屬於另一種需要 conclusion 判斷的情境。"
+  ]
+}

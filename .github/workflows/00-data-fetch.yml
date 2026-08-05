@@ -91,6 +91,7 @@ jobs:
           python scripts/data/compute_rolling.py
 
       - name: Step 4 - Upload artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: institutional-data-${{ github.run_id }}

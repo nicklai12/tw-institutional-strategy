@@ -1,0 +1,79 @@
+{
+  "stage": 3,
+  "agent": "測試員",
+  "completed_at": "2026-08-05T08:11:32Z",
+
+  "lint_script": "#!/usr/bin/env bash\nset -euo pipefail\n\nWORKFLOWS=(\n  \".github/workflows/00-data-fetch.yml\"\n  \".github/workflows/10-screener-setup-a.yml\"\n  \".github/workflows/20-manager-loop.yml\"\n)\n\nFAILED=0\n\nrun_actionlint() {\n  if command -v actionlint >/dev/null 2>&1; then\n    echo \"=== actionlint ===\"\n    actionlint \"${WORKFLOWS[@]}\" || FAILED=1\n  else\n    echo \"actionlint not installed; skipping (https://github.com/rhysd/actionlint)\"\n  fi\n}\n\nrun_yamllint() {\n  if command -v yamllint >/dev/null 2>&1; then\n    echo \"=== yamllint ===\"\n    yamllint \"${WORKFLOWS[@]}\" || FAILED=1\n  else\n    echo \"yamllint not installed; skipping\"\n  fi\n}\n\nrun_python_yaml() {\n  echo \"=== python yaml syntax check ===\"\n  python3 - <<'PY'\nimport sys, yaml\nfiles = [\n    \".github/workflows/00-data-fetch.yml\",\n    \".github/workflows/10-screener-setup-a.yml\",\n    \".github/workflows/20-manager-loop.yml\"\n]\nok = True\nfor f in files:\n    try:\n        with open(f) as fp:\n            yaml.safe_load(fp)\n        print(f\"OK: {f}\")\n    except Exception as e:\n        print(f\"FAIL: {f}: {e}\")\n        ok = False\nsys.exit(0 if ok else 1)\nPY\n  [ $? -eq 0 ] || FAILED=1\n}\n\nrun_actionlint\nrun_yamllint\nrun_python_yaml\n\nif [ \"$FAILED\" -eq 0 ]; then\n  echo \"All checks passed\"\nelse\n  echo \"Some checks failed\"\n  exit 1\nfi\n",
+
+  "verification_checklist": [
+    {
+      "scenario": "情境 A：正常交易日",
+      "steps": [
+        "在 GitHub 倉庫頁面進入 Actions → 00 Data Fetch → Run workflow，選擇 main 分支後點擊 Run workflow（或等待 cron 排程自動觸發）",
+        "進入該 run 的詳情頁面，依序檢查 guardrail、Step 2 - Fetch institutional data、Step 4 - Upload artifacts 的狀態",
+        "切換到 Actions → 10 Screener Setup A 與 20 Manager Loop，確認出現由此次 workflow_run 觸發的新 run"
+      ],
+      "pass_criteria": "00 Data Fetch 結論為 success；Step 4 - Upload artifacts 狀態為 success 且 artifact institutional-data-<run_id> 存在；10 Screener Setup A 與 20 Manager Loop 均出現新 run 且結論為 success；screener-a-<run_id> 與 manager-report-<run_id> artifact 均存在",
+      "how_to_simulate_locally": "使用 nektos/act 本機執行：act -W .github/workflows/00-data-fetch.yml workflow_dispatch -P ubuntu-latest=node:16-bullseye（需先安裝 act 並登入 ghcr.io）。因本機無法完整模擬 workflow_run 自動觸發，下游兩個 workflow 仍需在 GitHub UI 驗證。"
+    },
+    {
+      "scenario": "情境 B：颱風休市（exit 1）",
+      "steps": [
+        "選擇台股休市日（如颱風假）或建立一個臨時測試分支，在不修改 main 分支 Python 腳本的前提下，於該分支將 Step 2 的 python 指令暫時換成 exit 1，透過 workflow_dispatch 觸發 00 Data Fetch",
+        "進入 run 詳情，確認 Step 2 失敗但 Step 4 - Upload artifacts 仍顯示 success（因 if: always()）",
+        "檢查 Actions → 10 Screener Setup A 與 20 Manager Loop 是否出現新 run，並確認它們的 job 有執行（conclusion 為 failure 時仍會觸發並執行）"
+      ],
+      "pass_criteria": "00 Data Fetch 結論為 failure；Step 4 - Upload artifacts 狀態為 success；institutional-data-<run_id> artifact 存在；10 Screener Setup A 與 20 Manager Loop 均出現新 run 且 screener-setup-a / manager-loop job 被執行（非 skipped）；下游若資料完整則結論為 success，若資料不足導致腳本失敗則結論為 failure（但不能是 skipped）",
+      "how_to_simulate_locally": "在本機用 act 執行 00-data-fetch.yml 的 workflow_dispatch，並在測試分支將 Step 2 的 run 區塊最後一行加入 exit 1；觀察 Step 4 是否仍被執行。下游 workflow_run 無法用 act 完整模擬，建議刪除測試分支後回 GitHub UI 驗證。"
+    },
+    {
+      "scenario": "情境 C：人工 Cancel",
+      "steps": [
+        "進入 Actions → 00 Data Fetch → Run workflow，點擊 Run workflow 後立即回到 run 詳情頁",
+        "在 Step 2 - Fetch institutional data 或 Step 4 - Upload artifacts 執行期間，點擊右上角 ... → Cancel workflow",
+        "等待 workflow 完全取消後，檢查 Actions → 10 Screener Setup A 與 20 Manager Loop 在相近時間是否有新 run 產生"
+      ],
+      "pass_criteria": "00 Data Fetch 結論為 cancelled；10 Screener Setup A 與 20 Manager Loop 在取消後的 1 分鐘內未出現由此次 run 觸發的新 run（查無對應 run-id）",
+      "how_to_simulate_locally": "本機使用 act 執行 00-data-fetch.yml 時，在執行過程中按 Ctrl+C 中斷，觀察是否未產生下游 run。由於 act 不支援 workflow_run 事件，建議以 GitHub UI 測試為主。"
+    }
+  ],
+
+  "yaml_static_checks": [
+    {
+      "file": ".github/workflows/00-data-fetch.yml",
+      "check": "Step 4 - Upload artifacts 是否包含 if: always()",
+      "expected": "找到 if: always()",
+      "how_to_verify": "grep -A1 'name: Step 4 - Upload artifacts' .github/workflows/00-data-fetch.yml | grep 'if: always()'"
+    },
+    {
+      "file": ".github/workflows/10-screener-setup-a.yml",
+      "check": "workflow_run.types 是否為 [completed]",
+      "expected": "completed",
+      "how_to_verify": "yq '.on.workflow_run.types[0]' .github/workflows/10-screener-setup-a.yml"
+    },
+    {
+      "file": ".github/workflows/10-screener-setup-a.yml",
+      "check": "screener-setup-a job 是否檢查 upstream conclusion",
+      "expected": "包含 github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure'",
+      "how_to_verify": "yq '.jobs.screener-setup-a.if' .github/workflows/10-screener-setup-a.yml | grep -E \"conclusion == 'success'.*conclusion == 'failure'\""
+    },
+    {
+      "file": ".github/workflows/20-manager-loop.yml",
+      "check": "workflow_run.types 是否為 [completed]",
+      "expected": "completed",
+      "how_to_verify": "yq '.on.workflow_run.types[0]' .github/workflows/20-manager-loop.yml"
+    },
+    {
+      "file": ".github/workflows/20-manager-loop.yml",
+      "check": "manager-loop job 是否檢查 upstream conclusion",
+      "expected": "包含 github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure'",
+      "how_to_verify": "yq '.jobs.manager-loop.if' .github/workflows/20-manager-loop.yml | grep -E \"conclusion == 'success'.*conclusion == 'failure'\""
+    }
+  ],
+
+  "side_notes": [
+    "00-data-fetch.yml 的 Step 5 - Trigger downstream Screener workflows 仍是 TODO placeholder，與 workflow_run 自動觸發無關，測試時無需理會。",
+    "workflow_run 事件無法在本機透過 act 完整模擬，情境 B 與 C 的下游觸發驗證必須在 GitHub UI 執行。",
+ "本測試計畫假設 guardrail job 在所有情境中皆通過；若 guardrail 失敗，下游 job 本來就會被 skip，與本次修復結論判斷無關。"
+  ]
+}
