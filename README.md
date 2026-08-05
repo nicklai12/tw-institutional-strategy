@@ -66,9 +66,9 @@ tests/
 
 | Workflow | 觸發時機 | 用途 |
 |---|---|---|
-| `00-data-fetch.yml` | 每個交易日收盤後（約 16:30）透過 `schedule` 觸發 | 還原前次成功的 `institutional-data` artifact；首次執行補抓 25 個交易日，之後只抓當日；執行 `scripts/data/` 產生 `data/raw/` 與 `data/rolling/` 後上傳 artifact |
-| `10-screener-setup-a.yml` | `00-data-fetch.yml` 成功後 `workflow_run` 觸發 | 執行 `scripts/screener/` 產生 Setup A 候選股 Issue |
-| `20-manager-loop.yml` | `00-data-fetch.yml` 成功後 `workflow_run` 觸發 | 執行 `scripts/manager/` 檢查大盤與持倉上限護欄 |
+| `00-data-fetch.yml` | 每個交易日收盤後（約 16:30）透過 `schedule` 觸發 | 還原前次成功的 `institutional-data` artifact；首次執行補抓 25 個交易日，之後只抓當日；執行 `scripts/data/` 產生 `data/raw/` 與 `data/rolling/`；即使 fetch 因跳過日期而 exit 1，仍透過 `if: always()` 上傳 artifact |
+| `10-screener-setup-a.yml` | `00-data-fetch.yml` 完成後 `workflow_run` 觸發，當 upstream conclusion 為 success 或 failure 時執行 | 執行 `scripts/screener/` 產生 Setup A 候選股 Issue |
+| `20-manager-loop.yml` | `00-data-fetch.yml` 完成後 `workflow_run` 觸發，當 upstream conclusion 為 success 或 failure 時執行 | 執行 `scripts/manager/` 檢查大盤與持倉上限護欄 |
 | `30-signal-monitor.yml` | `20-manager-loop.yml` 成功後 `workflow_run` 觸發 | 執行 `scripts/monitor/` 檢查出場條件並標記 `exit-triggered` |
 | `50-audit-check.yml` | Issue 建立、新增 `screened`/`signal-confirmed`/`holding` Label，或留言 `/re-audit` 時觸發 | 執行 `scripts/audit/` 檢查欄位與護欄 |
 | `60-performance-report.yml` | 每週五台灣時間 18:30 透過 `schedule` 觸發，或 `workflow_dispatch` 手動觸發 | 執行 `scripts/report/generate_report.py` 並部署到 GitHub Pages |
