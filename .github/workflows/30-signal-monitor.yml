@@ -13,6 +13,10 @@ jobs:
   signal-monitor:
     runs-on: ubuntu-latest
     needs: guardrail
+    permissions:
+      contents: read
+      issues: write
+      actions: write
     if: ${{ needs.guardrail.outputs.passed == 'true' || github.event_name == 'workflow_dispatch' }}
 
     steps:

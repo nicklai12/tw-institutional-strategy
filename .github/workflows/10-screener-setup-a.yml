@@ -15,6 +15,10 @@ jobs:
   screener-setup-a:
     runs-on: ubuntu-latest
     needs: guardrail
+    permissions:
+      contents: read
+      issues: write
+      actions: write
     if: ${{ github.event_name == 'workflow_dispatch' || (needs.guardrail.outputs.passed == 'true' && (github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure')) }}
 
     steps:
