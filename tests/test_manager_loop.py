@@ -118,6 +118,9 @@ def test_main_writes_report_and_labels_issues(
     assert report["holding_cap_triggered"] is True
     assert report["current_holding_count"] == 6
     assert report["processed_issue_count"] == 1
+    assert report["screened_issue_count"] == 1
+    assert report["auto_ok_granted_count"] == 0
+    assert report["screened_blocked_count"] == 1
 
     calls = [call.args[0] for call in mock_gh.call_args_list]
     add_label_calls = [c for c in calls if len(c) > 4 and c[1] == "edit"]
@@ -126,5 +129,143 @@ def test_main_writes_report_and_labels_issues(
         c == ["issue", "edit", "1", "--add-label", "guardrail-blocked"]
         for c in add_label_calls
     )
+    # 護欄觸發時不應核可 auto-ok
+    assert not any(c == ["issue", "edit", "1", "--add-label", "auto-ok"] for c in add_label_calls)
+
+    os.remove(report_path)
+
+
+@patch("scripts.manager.manager_loop._run_gh")
+@patch("scripts.manager.manager_loop.fetch_market_drop_pct")
+@patch("scripts.manager.manager_loop._today_str")
+@patch("scripts.manager.manager_loop._today_compact")
+def test_manager_loop_grants_auto_ok_when_guardrails_pass(
+    mock_compact, mock_today, mock_drop, mock_gh
+):
+    """Manager grants auto-ok when market warning is off and holding count is below cap."""
+    mock_today.return_value = "2026-07-28"
+    mock_compact.return_value = "20260728"
+    mock_drop.return_value = -1.0  # 未觸發大盤護欄
+
+    def fake_gh(args):
+        result = type("Result", (), {"returncode": 0, "stderr": "", "stdout": ""})()
+        if args[1] == "list":
+            label = args[args.index("--label") + 1]
+            if label == "screened":
+                result.stdout = json.dumps(
+                    [{"number": 2, "title": "Test", "labels": [{"name": "screened"}]}]
+                )
+            elif label == "holding":
+                result.stdout = json.dumps([])
+        return result
+
+    mock_gh.side_effect = fake_gh
+
+    from scripts.manager.manager_loop import main
+
+    assert main() == 0
+
+    report_path = "data/manager/manager_report_20260728.json"
+    with open(report_path, encoding="utf-8") as f:
+        report = json.load(f)
+    assert report["market_warning_triggered"] is False
+    assert report["holding_cap_triggered"] is False
+    assert report["screened_issue_count"] == 1
+    assert report["auto_ok_granted_count"] == 1
+    assert report["screened_blocked_count"] == 0
+
+    calls = [call.args[0] for call in mock_gh.call_args_list]
+    assert any(c == ["issue", "edit", "2", "--add-label", "auto-ok"] for c in calls)
+
+    os.remove(report_path)
+
+
+@patch("scripts.manager.manager_loop._run_gh")
+@patch("scripts.manager.manager_loop.fetch_market_drop_pct")
+@patch("scripts.manager.manager_loop._today_str")
+@patch("scripts.manager.manager_loop._today_compact")
+def test_manager_loop_blocks_auto_ok_on_market_warning(
+    mock_compact, mock_today, mock_drop, mock_gh
+):
+    """Manager does not grant auto-ok when market drop warning triggers."""
+    mock_today.return_value = "2026-07-28"
+    mock_compact.return_value = "20260728"
+    mock_drop.return_value = -3.0  # 觸發大盤護欄
+
+    def fake_gh(args):
+        result = type("Result", (), {"returncode": 0, "stderr": "", "stdout": ""})()
+        if args[1] == "list":
+            label = args[args.index("--label") + 1]
+            if label == "screened":
+                result.stdout = json.dumps(
+                    [{"number": 3, "title": "Test", "labels": [{"name": "screened"}]}]
+                )
+            elif label == "holding":
+                result.stdout = json.dumps([])
+        return result
+
+    mock_gh.side_effect = fake_gh
+
+    from scripts.manager.manager_loop import main
+
+    assert main() == 0
+
+    report_path = "data/manager/manager_report_20260728.json"
+    with open(report_path, encoding="utf-8") as f:
+        report = json.load(f)
+    assert report["market_warning_triggered"] is True
+    assert report["screened_issue_count"] == 1
+    assert report["auto_ok_granted_count"] == 0
+    assert report["screened_blocked_count"] == 1
+
+    calls = [call.args[0] for call in mock_gh.call_args_list]
+    assert not any(c == ["issue", "edit", "3", "--add-label", "auto-ok"] for c in calls)
+
+    os.remove(report_path)
+
+
+@patch("scripts.manager.manager_loop._run_gh")
+@patch("scripts.manager.manager_loop.fetch_market_drop_pct")
+@patch("scripts.manager.manager_loop._today_str")
+@patch("scripts.manager.manager_loop._today_compact")
+def test_manager_loop_blocks_auto_ok_on_holding_cap(
+    mock_compact, mock_today, mock_drop, mock_gh
+):
+    """Manager does not grant auto-ok when holding count reaches cap."""
+    mock_today.return_value = "2026-07-28"
+    mock_compact.return_value = "20260728"
+    mock_drop.return_value = -1.0  # 未觸發大盤護欄
+
+    def fake_gh(args):
+        result = type("Result", (), {"returncode": 0, "stderr": "", "stdout": ""})()
+        if args[1] == "list":
+            label = args[args.index("--label") + 1]
+            if label == "screened":
+                result.stdout = json.dumps(
+                    [{"number": 4, "title": "Test", "labels": [{"name": "screened"}]}]
+                )
+            elif label == "holding":
+                result.stdout = json.dumps(
+                    [{"number": i, "title": f"H{i}", "labels": [{"name": "holding"}]}
+                     for i in range(10, 16)]
+                )
+        return result
+
+    mock_gh.side_effect = fake_gh
+
+    from scripts.manager.manager_loop import main
+
+    assert main() == 0
+
+    report_path = "data/manager/manager_report_20260728.json"
+    with open(report_path, encoding="utf-8") as f:
+        report = json.load(f)
+    assert report["holding_cap_triggered"] is True
+    assert report["screened_issue_count"] == 1
+    assert report["auto_ok_granted_count"] == 0
+    assert report["screened_blocked_count"] == 1
+
+    calls = [call.args[0] for call in mock_gh.call_args_list]
+    assert not any(c == ["issue", "edit", "4", "--add-label", "auto-ok"] for c in calls)
 
     os.remove(report_path)

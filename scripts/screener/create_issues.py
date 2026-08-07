@@ -102,7 +102,7 @@ def create_issue(candidate: dict[str, Any], project_number: str | None = None) -
             "--body",
             body,
             "--label",
-            "setup-a,screened,auto-ok",
+            "setup-a,screened",
         ]
     )
 

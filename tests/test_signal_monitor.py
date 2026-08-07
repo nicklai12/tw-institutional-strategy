@@ -128,7 +128,7 @@ def test_setup_c_exit_and_stop_profit_reminder():
 @patch("scripts.monitor.signal_monitor.load_raw_files")
 @patch("scripts.monitor.signal_monitor._today_str")
 @patch("scripts.monitor.signal_monitor._today_compact")
-def test_main_triggers_exit_label(
+def test_main_reports_stoploss_without_labeling(
     mock_compact,
     mock_today,
     mock_raw,
@@ -137,7 +137,7 @@ def test_main_triggers_exit_label(
     mock_history,
     mock_gh,
 ):
-    """Signal monitor labels exit-triggered and removes holding when stop loss hits."""
+    """Signal monitor records stop loss in report but no longer applies exit labels."""
     mock_today.return_value = "2026-07-28"
     mock_compact.return_value = "20260728"
     mock_raw.return_value = _make_raw_data(
@@ -171,15 +171,26 @@ def test_main_triggers_exit_label(
     assert os.path.exists(report_path)
     with open(report_path, encoding="utf-8") as f:
         report = json.load(f)
-    assert report["exit_triggered_count"] == 1
+
+    # 現有欄位保留：exit_signals / stoploss_triggered / partial_signals 仍存在 report 中
+    assert "exit_signals" in report["holdings"][0]
+    assert "stoploss_triggered" in report["holdings"][0]
+    assert "partial_signals" in report["holdings"][0]
     assert report["holdings"][0]["stoploss_triggered"] is True
 
+    # signal_monitor 不再對 exit-triggered / result-stoploss-hit / holding 進行 Label 操作
     calls = [call.args[0] for call in mock_gh.call_args_list]
     edit_calls = [c for c in calls if c[1] == "edit"]
-    assert any(c == ["issue", "edit", "42", "--add-label", "exit-triggered"] for c in edit_calls)
-    assert any(c == ["issue", "edit", "42", "--remove-label", "holding"] for c in edit_calls)
-    assert any(
+    assert not any(
+        c == ["issue", "edit", "42", "--add-label", "exit-triggered"]
+        for c in edit_calls
+    )
+    assert not any(
         c == ["issue", "edit", "42", "--add-label", "result-stoploss-hit"]
+        for c in edit_calls
+    )
+    assert not any(
+        c == ["issue", "edit", "42", "--remove-label", "holding"]
         for c in edit_calls
     )
 

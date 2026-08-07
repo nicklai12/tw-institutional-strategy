@@ -500,16 +500,6 @@ def add_label(number: int, label: str) -> bool:
     return True
 
 
-def remove_label(number: int, label: str) -> bool:
-    result = _run_gh(["issue", "edit", str(number), "--remove-label", label])
-    if result.returncode != 0:
-        print(
-            f"WARNING: 無法移除 {label} 從 Issue #{number}: {result.stderr.strip()}"
-        )
-        return False
-    return True
-
-
 def add_comment(number: int, body: str) -> bool:
     result = _run_gh(["issue", "comment", str(number), "--body", body])
     if result.returncode != 0:
@@ -584,14 +574,6 @@ def main() -> int:
 
         comment_body = build_monitor_comment(result, setup_type)
         add_comment(number, comment_body)
-
-        should_exit = bool(result["exit_signals"]) or result["stoploss_triggered"]
-        if should_exit:
-            triggered_count += 1
-            add_label(number, "exit-triggered")
-            remove_label(number, "holding")
-            if result["stoploss_triggered"]:
-                add_label(number, "result-stoploss-hit")
 
         processed += 1
         reports.append(
