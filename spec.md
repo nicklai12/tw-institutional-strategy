@@ -30,7 +30,7 @@
 
 | Label | 顏色 | 用途 |
 |---|---|---|
-| `auto-ok` | `#0e8a16` | 自動化護欄通過 |
+| `auto-ok` | `#0e8a16` | Manager 評估後核可進入 Worker Queue |
 | `human-review` | `#d93f0b` | 需要人工覆核 |
 | `data-missing` | `#e4e669` | 資料不完整，Audit 未通過 |
 | `guardrail-blocked` | `#b60205` | 被護欄規則阻擋 |
@@ -141,6 +141,7 @@
 | `10-screener-setup-a.yml` | `screener-a-{run_id}` | `data/screener/screener_result_a_YYYYMMDD.json` |
 | `20-manager-loop.yml` | `manager-report-{run_id}` | `data/manager/manager_report_YYYYMMDD.json` |
 | `30-signal-monitor.yml` | `monitor-report-{run_id}` | `data/monitor/monitor_report_YYYYMMDD.json` |
+| `40-exit-checker.yml` | `exit-checker-report-{run_id}` | `data/exit-checker/exit_report_YYYYMMDD.json` |
 | `99-guardrail-check.yml` | `guardrail-report-{run_id}` | `data/guardrail/check_result_YYYYMMDD.json` |
 
 `YYYYMMDD` 為台灣時間的日期，`{run_id}` 為 GitHub Actions run ID。
@@ -176,7 +177,10 @@
   "market_warning_triggered": true,
   "current_holding_count": 6,
   "holding_cap_triggered": true,
-  "processed_issue_count": 1
+  "processed_issue_count": 1,
+  "screened_issue_count": 3,
+  "auto_ok_granted_count": 0,
+  "screened_blocked_count": 3
 }
 ```
 
@@ -207,7 +211,32 @@
 }
 ```
 
-### 5.4 Weekly Report
+### 5.4 Exit Checker Report
+
+檔案：`data/exit-checker/exit_report_YYYYMMDD.json`
+
+由 `scripts/exit-checker/exit_checker.py` 讀取 `monitor_report` 後產生，記錄實際執行的出場 Label 操作。
+
+```json
+{
+  "date": "2026-07-28",
+  "source_monitor_run_id": "1234567890",
+  "processed_count": 3,
+  "exit_triggered_count": 1,
+  "exits": [
+    {
+      "issue_number": 42,
+      "ticker": "2330",
+      "exit_reason": "stop_loss",
+      "stoploss_triggered": true,
+      "labels_added": ["exit-triggered", "result-stoploss-hit"],
+      "labels_removed": ["holding"]
+    }
+  ]
+}
+```
+
+### 5.5 Weekly Report
 
 檔案：`docs/data/report_YYYYWW.json`
 
@@ -250,7 +279,7 @@
 }
 ```
 
-### 5.5 Raw Institutional Data
+### 5.6 Raw Institutional Data
 
 檔案：`data/raw/YYYYMMDD.json`
 
@@ -278,7 +307,7 @@
 }
 ```
 
-### 5.6 Rolling Metrics
+### 5.7 Rolling Metrics
 
 檔案：`data/rolling/YYYYMMDD_rolling.json`
 
@@ -321,9 +350,10 @@
 | Workflow | 觸發條件 | 說明 |
 |---|---|---|
 | `00-data-fetch.yml` | `schedule` | 每個交易日收盤後約 16:30；首次執行補抓 25 日，之後還原前次 artifact 並只抓當日；fetch 因跳過日期 exit 1 時仍上傳 artifact（if: always()） |
-| `10-screener-setup-a.yml` | `workflow_run` | `00-data-fetch.yml` 完成後，且 conclusion 為 success 或 failure 時執行（排除 cancelled） |
+| `10-screener-setup-a.yml` | `workflow_run` | `20-manager-loop.yml` 成功後執行（僅 conclusion == 'success'） |
 | `20-manager-loop.yml` | `workflow_run` | `00-data-fetch.yml` 完成後，且 conclusion 為 success 或 failure 時執行（排除 cancelled） |
 | `30-signal-monitor.yml` | `workflow_run` | `20-manager-loop.yml` 成功後 |
+| `40-exit-checker.yml` | `workflow_run` | `30-signal-monitor.yml` 成功後 |
 | `50-audit-check.yml` | `issues` / `issue_comment` | Issue 被標記 `screened`/`signal-confirmed`/`holding`，或留言 `/re-audit` |
 | `60-performance-report.yml` | `schedule` / `workflow_dispatch` | 每週五台灣時間 18:30，或可手動觸發 |
 | `99-guardrail-check.yml` | `workflow_call` | 被其他 workflow 呼叫 |

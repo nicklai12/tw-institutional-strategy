@@ -1,0 +1,44 @@
+name: 40 Exit Checker
+
+on:
+  workflow_run:
+    workflows: ["30 Signal Monitor"]
+    types: [completed]
+
+jobs:
+  guardrail:
+    uses: ./.github/workflows/99-guardrail-check.yml
+
+  exit-checker:
+    runs-on: ubuntu-latest
+    needs: guardrail
+    permissions:
+      contents: read
+      actions: write
+      issues: write
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      needs.guardrail.outputs.passed == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run Exit Checker
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MONITOR_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          python scripts/exit-checker/exit_checker.py
+
+      - name: Upload exit checker report
+        uses: actions/upload-artifact@v4
+        with:
+          name: exit-checker-report-${{ github.run_id }}
+          path: data/exit-checker/
+          retention-days: 90

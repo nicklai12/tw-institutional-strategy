@@ -2,9 +2,8 @@ name: 10 Screener Setup A
 
 on:
   workflow_run:
-    workflows: ["00 Data Fetch"]
+    workflows: ["20 Manager Loop"]
     types: [completed]
-  workflow_dispatch:
 
 jobs:
   guardrail:
@@ -19,7 +18,7 @@ jobs:
       contents: read
       issues: write
       actions: write
-    if: ${{ github.event_name == 'workflow_dispatch' || (needs.guardrail.outputs.passed == 'true' && (github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure')) }}
+    if: github.event.workflow_run.conclusion == 'success'
 
     steps:
       - name: Checkout repository
@@ -35,13 +34,25 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests
 
-      - name: Step 1 - Download upstream artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: institutional-data-${{ github.event.workflow_run.id }}
-          path: data/
-          run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Step 1 - Download latest institutional data artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Fetching latest successful 00-data-fetch run ..."
+          DATA_RUN_ID=$(gh run list \
+            --workflow=00-data-fetch.yml \
+            --status=success \
+            --limit=1 \
+            --json databaseId \
+            --jq '.[0].databaseId')
+          if [ -z "$DATA_RUN_ID" ]; then
+            echo "ERROR: Could not find a successful 00-data-fetch run"
+            exit 1
+          fi
+          echo "Downloading artifact from run $DATA_RUN_ID"
+          gh run download "$DATA_RUN_ID" \
+            --name "institutional-data-${DATA_RUN_ID}" \
+            --dir data/
 
       - name: Step 2 - Run Setup A screener
         env:

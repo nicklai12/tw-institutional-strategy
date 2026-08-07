@@ -144,9 +144,12 @@ def main() -> int:
     today_str = _today_str()
     today_compact = _today_compact()
 
-    screened_issues = list_issues_by_label("screened")
+    all_screened_issues = list_issues_by_label("screened")
     screened_issues = [
-        issue for issue in screened_issues if not has_label(issue, "human-review")
+        issue for issue in all_screened_issues if not has_label(issue, "human-review")
+    ]
+    auto_ok_candidates = [
+        issue for issue in all_screened_issues if not has_label(issue, "auto-ok")
     ]
 
     holding_issues = list_issues_by_label("holding")
@@ -173,6 +176,19 @@ def main() -> int:
             add_comment_to_issue(number, _build_guardrail_comment(holding_count))
             print(f"OK: Issue #{number} 標記 guardrail-blocked（持倉上限）")
 
+    screened_issue_count = len(auto_ok_candidates)
+    auto_ok_granted_count = 0
+    screened_blocked_count = 0
+
+    if not market_warning_triggered and not holding_cap_triggered:
+        for issue in auto_ok_candidates:
+            number = issue["number"]
+            if add_label_to_issue(number, "auto-ok"):
+                auto_ok_granted_count += 1
+                print(f"OK: Issue #{number} 標記 auto-ok")
+    else:
+        screened_blocked_count = screened_issue_count
+
     report = {
         "date": today_str,
         "market_drop_pct": market_drop_pct,
@@ -180,6 +196,9 @@ def main() -> int:
         "current_holding_count": holding_count,
         "holding_cap_triggered": holding_cap_triggered,
         "processed_issue_count": processed,
+        "screened_issue_count": screened_issue_count,
+        "auto_ok_granted_count": auto_ok_granted_count,
+        "screened_blocked_count": screened_blocked_count,
     }
 
     os.makedirs(_REPORT_DIR, exist_ok=True)
@@ -190,7 +209,8 @@ def main() -> int:
     print(f"OK: Manager report written to {report_path}")
     print(
         f"market_drop_pct={market_drop_pct}, holding_count={holding_count}, "
-        f"processed={processed}"
+        f"processed={processed}, screened={screened_issue_count}, "
+        f"auto_ok={auto_ok_granted_count}, blocked={screened_blocked_count}"
     )
     return 0
 

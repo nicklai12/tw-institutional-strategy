@@ -11,16 +11,19 @@ graph TD
     A[市場數據<br/>TWSE / 投信 / 外資] -->|00-data-fetch.yml| B[scripts/data]
     B -->|標準化| C[tests/fixtures]
     B -->|原始與滾動資料| D[data/raw + data/rolling]
-    C -->|10-screener-setup-a.yml| E[scripts/screener]
-    D -->|10-screener-setup-a.yml| E
+    H[signal-confirmed] -->|20-manager-loop.yml| J[scripts/manager]
+    J -->|大盤/持倉上限護欄| K[human-review / guardrail-blocked]
+    J -->|觸發| Q[10-screener-setup-a.yml]
+    C -->|測試標準| E[scripts/screener]
+    D -->|資料| E
+    Q -->|執行篩選| E
     E -->|產生候選股| F[GitHub Issue]
     F -->|50-audit-check.yml| G[scripts/audit]
-    G -->|通過| H[signal-confirmed]
+    G -->|通過| H
     G -->|未通過| I[data-missing / guardrail-blocked]
-    H -->|20-manager-loop.yml| J[scripts/manager]
-    J -->|大盤/持倉上限護欄| K[human-review / guardrail-blocked]
     H -->|30-signal-monitor.yml| L[scripts/monitor]
-    L -->|出場條件| M[exit-triggered]
+    L -->|monitor-report| R[40-exit-checker.yml<br/>scripts/exit-checker]
+    R -->|出場條件| M[exit-triggered]
     M -->|人工結算| N[closed]
     N -->|60-performance-report.yml| O[scripts/report/generate_report.py]
     O -->|每週儀表板| P[GitHub Pages]
@@ -38,8 +41,9 @@ graph TD
 3. **Screener** 讀取資料產生候選股 **GitHub Issue**。
 4. **Audit** 檢查 Issue 欄位與護欄規則。
 5. **Manager Loop** 監控大盤與持倉上限，必要時標記人工介入或護欄阻擋。
-6. **Signal Monitor** 每日檢查 holding Issue 的出場條件。
-7. **Report Agent** 每週五彙整所有 Issue 與 Artifact，產生績效儀表板並部署到 **GitHub Pages**。
+6. **Signal Monitor** 每日檢查 holding Issue 的出場條件，產生 monitor report（判斷層）。
+7. **Exit Checker** 讀取 monitor report，執行出場 Label 操作（執行層）。
+8. **Report Agent** 每週五彙整所有 Issue 與 Artifact，產生績效儀表板並部署到 **GitHub Pages**。
 
 ---
 
@@ -55,7 +59,8 @@ graph TD
 | `scripts/screener/create_issues.py` | 為候選股建立 GitHub Issue | screener result JSON | GitHub Issues |
 | `scripts/audit/audit_issue.py` | 驗證 Issue 必填欄位與護欄 | GitHub Issue | Label 變更 + 評論 |
 | `scripts/manager/manager_loop.py` | 大盤急跌與持倉上限監控 | TWSE 大盤 API、Issues | `data/manager/manager_report_YYYYMMDD.json`、Label 變更 |
-| `scripts/monitor/signal_monitor.py` | 每日檢查 holding Issue 出場條件 | Issues、股價 API | `data/monitor/monitor_report_YYYYMMDD.json`、Label 變更 |
+| `scripts/monitor/signal_monitor.py` | 每日檢查 holding Issue 出場條件（判斷層），產生 monitor report；對缺少進場資訊的 Issue 標記 data-missing | Issues、股價 API | `data/monitor/monitor_report_YYYYMMDD.json`、Issue 評論、Label 變更（data-missing） |
+| `scripts/exit-checker/exit_checker.py` | 讀取 monitor report，執行出場 Label 操作（執行層） | `data/monitor/monitor_report_YYYYMMDD.json` | `data/exit-checker/exit_report_YYYYMMDD.json`、Issue Label 變更（exit-triggered / result-stoploss-hit / 移除 holding） |
 | `scripts/guardrail/pre_run_check.py` | 執行環境與資料前置檢查 | TWSE API、Issues | `data/guardrail/check_result_YYYYMMDD.json` |
 | `scripts/report/generate_report.py` | 每週產生績效報告與儀表板 | Issues、Artifacts | `docs/data/report_YYYYWW.json`、`docs/index.html` |
 
@@ -64,9 +69,10 @@ graph TD
 | 檔案 | 觸發 | 職責 |
 |---|---|---|
 | `00-data-fetch.yml` | `schedule` 每日收盤後 | 還原前次 artifact，首次執行補抓 25 日、之後只抓當日；執行 data scripts；不論 fetch 是否因跳過日期而 exit 1，皆上傳 institutional-data artifact（if: always()） |
-| `10-screener-setup-a.yml` | `workflow_run` 於 `00-data-fetch.yml` 完成後 | 當 upstream conclusion 為 success 或 failure 時執行；排除 cancelled。執行 Setup A screener 並建立 Issues |
+| `10-screener-setup-a.yml` | `workflow_run` 於 `20-manager-loop.yml` 成功後 | 當 upstream conclusion 為 success 時執行；由 Manager 確認風險狀態後才篩選。執行 Setup A screener 並建立 Issues |
 | `20-manager-loop.yml` | `workflow_run` 於 `00-data-fetch.yml` 完成後 | 當 upstream conclusion 為 success 或 failure 時執行；排除 cancelled。執行 manager loop |
-| `30-signal-monitor.yml` | `workflow_run` 於 `20-manager-loop.yml` 成功後 | 執行 signal monitor |
+| `30-signal-monitor.yml` | `workflow_run` 於 `20-manager-loop.yml` 成功後 | 執行 signal monitor（判斷層），產生 monitor report |
+| `40-exit-checker.yml` | `workflow_run` 於 `30-signal-monitor.yml` 成功後 | 讀取 monitor report，對觸發出場/停損的 holding Issue 操作 Label，並上傳 exit-checker-report artifact |
 | `50-audit-check.yml` | Issue 建立/Label 變更、`/re-audit` 留言 | 執行 audit |
 | `60-performance-report.yml` | `schedule` 每週五 18:30 TW、`workflow_dispatch` | 產生報告並部署到 gh-pages |
 | `99-guardrail-check.yml` | `workflow_call` | 被其他 workflow 呼叫，執行前置檢查 |
@@ -93,8 +99,13 @@ graph TD
         │
         ▼
    Signal Monitor 每日檢查
-   ├─ 觸發出場/停損 → exit-triggered (+ result-stoploss-hit)
+   ├─ 產生 monitor report
    └─ 持續持有 → holding
+        │
+        ▼
+   Exit Checker 讀取 monitor report 並執行 Label 操作
+   ├─ 觸發出場/停損 → exit-triggered（+ result-stoploss-hit）並移除 holding
+   └─ 無出場 → 保持 holding
         │
         ▼
    人工結算並關閉 Issue
@@ -128,6 +139,10 @@ graph TD
     └── monitor-report-{run_id}
         └── data/monitor/monitor_report_YYYYMMDD.json
 
+40-exit-checker.yml
+    └── exit-checker-report-{run_id}
+        └── data/exit-checker/exit_report_YYYYMMDD.json
+
 99-guardrail-check.yml
     └── guardrail-report-{run_id}
         └── data/guardrail/check_result_YYYYMMDD.json
@@ -147,7 +162,8 @@ graph TD
 | 是否通過 Audit | `scripts/audit/audit_issue.py` | 通過/未通過 |
 | 是否觸發大盤護欄 | `scripts/manager/manager_loop.py` | human-review |
 | 是否達持倉上限 | `scripts/manager/manager_loop.py` | guardrail-blocked |
-| 是否觸發出場/停損 | `scripts/monitor/signal_monitor.py` | exit-triggered、result-stoploss-hit |
+| 是否核可進入 Worker Queue | `scripts/manager/manager_loop.py` | auto-ok |
+| 是否觸發出場/停損 | `scripts/monitor/signal_monitor.py`（判斷）<br>`scripts/exit-checker/exit_checker.py`（執行 Label） | exit-triggered、result-stoploss-hit |
 | 是否產生本週報告 | `scripts/report/generate_report.py` | 每週五部署 Pages |
 
 ---
