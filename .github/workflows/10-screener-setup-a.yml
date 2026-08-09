@@ -2,7 +2,7 @@ name: 10 Screener Setup A
 
 on:
   workflow_run:
-    workflows: ["20 Manager Loop"]
+    workflows: ["00 Data Fetch"]
     types: [completed]
 
 jobs:

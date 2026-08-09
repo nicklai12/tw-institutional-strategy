@@ -2,7 +2,7 @@ name: 20 Manager Loop
 
 on:
   workflow_run:
-    workflows: ["00 Data Fetch"]
+    workflows: ["10 Screener Setup A"]
     types: [completed]
   workflow_dispatch:
 
