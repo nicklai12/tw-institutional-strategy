@@ -4,6 +4,14 @@
 
 ---
 
+## 0. 版本異動說明
+
+> 本次更新配合 `system-map.md` 的流程調整：Workflow 觸發鏈重排、`30-signal-monitor` 新增進場訊號判斷職責。受影響章節：**第 1.5 節**（Label 使用約定）、**第 5.3 節**（Monitor Report Schema）、**第 6 節**（Workflow 觸發條件）、**第 7 節**（新增 7.6 進場訊號判斷規則）。其餘章節未變動。
+>
+> ⚠️ 本次更新中，`signal-confirmed` 標記時是否移除 `screened`/`auto-ok`、以及 `entry_zone` 的資料來源，屬於**尚待確認的假設**，詳見 `system-map.md` 第 0 節。
+
+---
+
 ## 1. Label 規格
 
 所有 Label 由 `scripts/setup-labels.sh` 建立，分為四類：策略、狀態、風險、結果。
@@ -21,7 +29,7 @@
 | Label | 顏色 | 用途 |
 |---|---|---|
 | `screened` | `#e4e669` | 通過初篩 |
-| `signal-confirmed` | `#0e8a16` | 訊號確認，等待進場 |
+| `signal-confirmed` | `#0e8a16` | 訊號確認，等待進場（由 `30-signal-monitor.yml` 判斷價格回落至 `entry_zone` 後自動標記） |
 | `holding` | `#006b75` | 持有中 |
 | `exit-triggered` | `#d93f0b` | 出場訊號已觸發 |
 | `closed` | `#eeeeee` | 已結案 |
@@ -30,7 +38,7 @@
 
 | Label | 顏色 | 用途 |
 |---|---|---|
-| `auto-ok` | `#0e8a16` | Manager 評估後核可進入 Worker Queue |
+| `auto-ok` | `#0e8a16` | Manager 評估後核可進入 Worker Queue，等待 Signal Monitor 判斷進場訊號 |
 | `human-review` | `#d93f0b` | 需要人工覆核 |
 | `data-missing` | `#e4e669` | 資料不完整，Audit 未通過 |
 | `guardrail-blocked` | `#b60205` | 被護欄規則阻擋 |
@@ -50,6 +58,7 @@
 - Issue 結案時必須同時具有 `closed` 與一個 `result-*` Label。
 - `result-stoploss-hit` 獨立於 `result-profit` / `result-loss`，僅表示觸及停損；報表會分開統計。
 - `data-missing` 用於計算 Audit 一次通過率；曾被貼過此 Label 即視為未一次通過。
+- **【新增，⚠️ 待確認】** Issue 標記 `signal-confirmed` 時，同步移除 `screened` 與 `auto-ok`，避免同一 Issue 疊加多個狀態標籤，也避免 Manager Loop 重複評估已進入下一階段的 Issue。
 
 ---
 
@@ -79,7 +88,7 @@
 - **trust_5d_net**: 投信 5 日淨買超
 - **close_vs_ma20**: above / below
 - **ma20_direction**: 上升 / 下降 / 走平
-- **entry_zone**: 進場區間
+- **entry_zone**: 進場區間（⚠️ 本次調整後，此欄位亦作為 signal_monitor 進場訊號判斷的資料來源，見 7.6 節）
 - **stop_loss_price**: 停損價
 - **position_size_lots**: 張數（人工填寫）
 - **risk_r_pct**: 風險佔比 %（人工填寫，≤ 1.0）
@@ -188,10 +197,23 @@
 
 檔案：`data/monitor/monitor_report_YYYYMMDD.json`
 
+**【新增欄位】** `entry_checked_count`、`entry_confirmed_count`、`entry_candidates` 用於記錄進場訊號判斷結果；`holdings` 為既有的出場訊號判斷結果，結構不變。
+
 ```json
 {
   "date": "2026-07-28",
   "raw_date": "20260727",
+  "entry_checked_count": 2,
+  "entry_confirmed_count": 1,
+  "entry_candidates": [
+    {
+      "issue_number": 55,
+      "ticker": "2454",
+      "entry_zone": "95.20-98.50",
+      "close": 96.80,
+      "entry_confirmed": true
+    }
+  ],
   "processed_count": 1,
   "exit_triggered_count": 1,
   "holdings": [
@@ -349,12 +371,12 @@
 
 | Workflow | 觸發條件 | 說明 |
 |---|---|---|
-| `00-data-fetch.yml` | `schedule` | 每個交易日收盤後約 16:30；首次執行補抓 25 日，之後還原前次 artifact 並只抓當日；fetch 因跳過日期 exit 1 時仍上傳 artifact（if: always()） |
-| `10-screener-setup-a.yml` | `workflow_run` | `00-data-fetch.yml` 成功後執行（僅 conclusion == 'success'） |
-| `20-manager-loop.yml` | `workflow_run` | `10-screener-setup-a.yml` 完成後，且 conclusion 為 success 或 failure 時執行（排除 cancelled） |
-| `30-signal-monitor.yml` | `workflow_run` | `20-manager-loop.yml` 成功後 |
-| `40-exit-checker.yml` | `workflow_run` | `30-signal-monitor.yml` 成功後 |
-| `50-audit-check.yml` | `issues` / `issue_comment` | Issue 被標記 `screened`/`signal-confirmed`/`holding`，或留言 `/re-audit` |
+| `00-data-fetch.yml` | `schedule` | 每個交易日收盤後約 18:30 TW；首次執行補抓 25 日，之後還原前次 artifact 並只抓當日；fetch 因跳過日期 exit 1 時仍上傳 artifact（if: always()） |
+| `10-screener-setup-a.yml` | `workflow_run` | 【變更】`00-data-fetch.yml` 完成後執行（僅 conclusion == 'success'）；原為接在 20-manager-loop 之後 |
+| `20-manager-loop.yml` | `workflow_run` | 【變更】`10-screener-setup-a.yml` 完成後，且 conclusion 為 success 或 failure 時執行（排除 cancelled）；原為接在 00-data-fetch 之後 |
+| `30-signal-monitor.yml` | `workflow_run` | `20-manager-loop.yml` 成功後（順序不變，但職責新增進場訊號判斷） |
+| `40-exit-checker.yml` | `workflow_run` | `30-signal-monitor.yml` 成功後（不變） |
+| `50-audit-check.yml` | `issues` / `issue_comment` | Issue 被標記 `screened`/`signal-confirmed`/`holding`，或留言 `/re-audit`。**注意**：`signal-confirmed` 事件在本次調整後才會被實際觸發 |
 | `60-performance-report.yml` | `schedule` / `workflow_dispatch` | 每週五台灣時間 18:30，或可手動觸發 |
 | `99-guardrail-check.yml` | `workflow_call` | 被其他 workflow 呼叫 |
 
@@ -391,6 +413,16 @@ days_held = report_date - entry_date（日曆天數）
 ### 7.5 目前損益
 
 從 Issue 的最新 monitor 評論中擷取 `相對進場損益：{value}%`；若無則顯示 `N/A`。
+
+### 7.6 進場訊號判斷規則（新增，⚠️ 待確認）
+
+```
+entry_confirmed = min(MA5, MA20) ≤ close ≤ max(MA5, MA20)
+```
+
+- `entry_zone` 數值來源：Issue body 中 screener 建立當下寫入的**靜態值**，非重新計算當下的 MA5/MA20。
+- 判斷成立時，標記 `signal-confirmed`，並依 1.5 節約定同步移除 `screened`、`auto-ok`。
+- 此規則目前僅適用於 Setup A（`entry_zone` 為 MA5~MA20 區間）；Setup B（`breakout_price`）、Setup C（`entry_day`）尚未定義對應的進場訊號規則，需另行確認。
 
 ---
 
