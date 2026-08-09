@@ -12,6 +12,8 @@ from typing import Any
 
 import requests
 
+from scripts.screener.setup_a import fetch_price_metrics
+
 
 _REPORT_DIR = "data/monitor"
 _RAW_DIR = "data/raw"
@@ -125,6 +127,31 @@ def get_holding_issues() -> list[dict[str, Any]]:
     )
     if result.returncode != 0:
         print(f"WARNING: 無法讀取 holding Issues: {result.stderr.strip()}")
+        return []
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return []
+
+
+def get_auto_ok_issues() -> list[dict[str, Any]]:
+    """Return open issues labeled 'auto-ok'."""
+    result = _run_gh(
+        [
+            "issue",
+            "list",
+            "--state",
+            "open",
+            "--label",
+            "auto-ok",
+            "--json",
+            "number,title,labels",
+            "--limit",
+            "1000",
+        ]
+    )
+    if result.returncode != 0:
+        print(f"WARNING: 無法讀取 auto-ok Issues: {result.stderr.strip()}")
         return []
     try:
         return json.loads(result.stdout)
@@ -454,6 +481,39 @@ def evaluate_signals(
     }
 
 
+def check_entry_signal(ticker: str, date_str: str | None = None) -> dict[str, Any] | None:
+    """Check if today's close falls between MA5 and MA20 (entry zone).
+
+    Returns dict with keys: triggered, close, ma5, ma20, lower, upper.
+    Returns None if price metrics cannot be fetched.
+    """
+    if date_str is None:
+        date_str = _today_compact()
+
+    metrics = fetch_price_metrics(ticker, date_str)
+    if metrics is None:
+        return None
+
+    close = metrics.get("close")
+    ma5 = metrics.get("ma5")
+    ma20 = metrics.get("ma20")
+    if close is None or ma5 is None or ma20 is None:
+        return None
+
+    lower = min(ma5, ma20)
+    upper = max(ma5, ma20)
+    triggered = lower <= close <= upper
+
+    return {
+        "triggered": triggered,
+        "close": close,
+        "ma5": ma5,
+        "ma20": ma20,
+        "lower": round(lower, 2),
+        "upper": round(upper, 2),
+    }
+
+
 def build_monitor_comment(result: dict[str, Any], setup_type: str) -> str:
     lines = [
         "---",
@@ -590,6 +650,72 @@ def main() -> int:
                 "stopprofit_reminder": result["stopprofit_reminder"],
             }
         )
+
+    # Entry-signal scan for issues labeled auto-ok.
+    auto_ok_issues = get_auto_ok_issues()
+    if not auto_ok_issues:
+        print("OK: 目前沒有 auto-ok Issue")
+
+    for issue_summary in auto_ok_issues:
+        number = issue_summary["number"]
+        issue = get_issue_details(number)
+        if issue is None:
+            continue
+
+        title = issue.get("title", "")
+        body = issue.get("body", "") or ""
+        ticker = _parse_field(body, "ticker") or _extract_ticker_from_title(title)
+        if ticker is None:
+            print(f"WARNING: Issue #{number} 無法解析 ticker，跳過")
+            continue
+
+        entry_zone = _parse_field(body, "entry_zone")
+
+        signal = check_entry_signal(ticker, latest_raw_date)
+        if signal is None:
+            print(f"WARNING: Issue #{number} ({ticker}) 無法取得進場價格指標，跳過")
+            continue
+
+        if signal["triggered"]:
+            print(f"OK: Issue #{number} ({ticker}) 符合進場條件")
+            result = _run_gh(
+                [
+                    "issue",
+                    "edit",
+                    str(number),
+                    "--remove-label",
+                    "screened",
+                    "--remove-label",
+                    "auto-ok",
+                    "--add-label",
+                    "signal-confirmed",
+                ]
+            )
+            if result.returncode != 0:
+                print(
+                    f"WARNING: 無法更新 Issue #{number} 的 labels: {result.stderr.strip()}"
+                )
+                continue
+
+            comment_lines = [
+                "---",
+                f"📊 **進場訊號確認** {_today_str()}",
+                f"- 當日收盤：{signal['close']}",
+                f"- MA5：{signal['ma5']}",
+                f"- MA20：{signal['ma20']}",
+            ]
+            if entry_zone:
+                comment_lines.append(f"- 進場區間參考值：{entry_zone}")
+            comment_lines.extend(
+                [
+                    "",
+                    "✅ 訊號確認，符合進場條件",
+                    "",
+                    "已將本 Issue 標記為 signal-confirmed，請進行後續下單與建倉追蹤。",
+                    "---",
+                ]
+            )
+            add_comment(number, "\n".join(comment_lines))
 
     os.makedirs(_REPORT_DIR, exist_ok=True)
     report_path = os.path.join(_REPORT_DIR, f"monitor_report_{today_compact}.json")
