@@ -69,8 +69,8 @@ graph TD
 | 檔案 | 觸發 | 職責 |
 |---|---|---|
 | `00-data-fetch.yml` | `schedule` 每日收盤後 | 還原前次 artifact，首次執行補抓 25 日、之後只抓當日；執行 data scripts；不論 fetch 是否因跳過日期而 exit 1，皆上傳 institutional-data artifact（if: always()） |
-| `10-screener-setup-a.yml` | `workflow_run` 於 `20-manager-loop.yml` 成功後 | 當 upstream conclusion 為 success 時執行；由 Manager 確認風險狀態後才篩選。執行 Setup A screener 並建立 Issues |
-| `20-manager-loop.yml` | `workflow_run` 於 `00-data-fetch.yml` 完成後 | 當 upstream conclusion 為 success 或 failure 時執行；排除 cancelled。執行 manager loop |
+| `10-screener-setup-a.yml` | `workflow_run` 於 `00-data-fetch.yml` 成功後 | 當 upstream conclusion 為 success 時執行。執行 Setup A screener 並建立 Issues |
+| `20-manager-loop.yml` | `workflow_run` 於 `10-screener-setup-a.yml` 完成後 | 當 upstream conclusion 為 success 或 failure 時執行；排除 cancelled。執行 manager loop |
 | `30-signal-monitor.yml` | `workflow_run` 於 `20-manager-loop.yml` 成功後 | 執行 signal monitor（判斷層），產生 monitor report |
 | `40-exit-checker.yml` | `workflow_run` 於 `30-signal-monitor.yml` 成功後 | 讀取 monitor report，對觸發出場/停損的 holding Issue 操作 Label，並上傳 exit-checker-report artifact |
 | `50-audit-check.yml` | Issue 建立/Label 變更、`/re-audit` 留言 | 執行 audit |
