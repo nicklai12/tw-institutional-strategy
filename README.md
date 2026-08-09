@@ -10,22 +10,32 @@
 graph TD
     A[市場數據] -->|Data Agent| B[scripts/data]
     B --> C[tests/fixtures]
-    C --> D[scripts/screener]
-    D -->|產生候選股| E[GitHub Issue]
+    B --> D[scripts/screener]
+    C --> D
+    D -->|10-screener| E[GitHub Issue<br/>screened]
+    E -->|20-manager-loop| F2[scripts/manager]
+    F2 -->|正常| G0[auto-ok]
+    F2 -->|風險| G1[human-review<br/>guardrail-blocked]
+    G0 -->|30-signal-monitor<br/>進場訊號判斷| G[signal-confirmed]
     E --> F[scripts/audit]
-    F -->|通過護欄| G[signal-confirmed]
-    G --> H[scripts/report]
-    H --> I[持有監控 / 出場]
-    I --> J[closed]
+    G --> F
+    F -->|未通過| FX[data-missing]
+    G -. 人工判斷進場 .-> H[holding]
+    H -->|30-signal-monitor<br/>出場訊號判斷| I0[monitor report]
+    I0 -->|40-exit-checker| I[exit-triggered]
+    I -. 人工結算 .-> J[closed]
     J --> K[scripts/report/generate_report.py]
     K --> L[GitHub Pages 每週儀表板]
 
     style A fill:#e1f5fe
     style E fill:#fff9c4
+    style G fill:#c8e6c9
     style F fill:#ffccbc
     style J fill:#e8f5e9
     style L fill:#e1f5fe
 ```
+
+> **本次流程異動**：Workflow 觸發順序調整為 `00-data-fetch → 10-screener-setup-a → 20-manager-loop → 30-signal-monitor → 40-exit-checker`，使當日新建的候選股能在當日完成風險評估。`30-signal-monitor` 新增「進場訊號判斷」職責：對已通過風險評估（`auto-ok`）的候選股，檢查價格是否回落至建議進場區間（`entry_zone`），符合則自動標記 `signal-confirmed`，交由人工決定是否實際進場。詳細規則與尚待確認的假設，請參考 `spec.md` 第 0 節與 7.6 節。
 
 ---
 
@@ -36,8 +46,8 @@ graph TD
 | Phase 0 | 資料標準化 | 已產出 `tests/fixtures/oracle_input_*.json` 與 `oracle_output_*.json`，作為後續開發與測試的黃金標準。 |
 | Phase 1 | 倉庫基礎建設 | 建立資料夾結構、Issue Templates、Labels、Projects Board 設定與本說明文件。 |
 | Phase 2 | 數據管線 | `scripts/data/` 從 TWSE 取得機構籌碼資料，支援 `--backfill-days` 補抓最近 N 個交易日；`compute_rolling.py` 計算最近 20 日滾動指標，檔案不足時自動降級並在輸出標註 `days_used`。 |
-| Phase 3 | 篩選器 | `scripts/screener/` 讀取標準化資料，依 Setup A/B/C 條件產生候選股 Issue。 |
-| Phase 4 | 審核與護欄 | `scripts/audit/` 在 Issue 建立或標記時執行，檢查必填欄位與策略護欄。 |
+| Phase 3 | 篩選器 | `scripts/screener/` 讀取標準化資料，依 Setup A/B/C 條件產生候選股 Issue。緊接在數據管線完成後執行，確保候選股能在當日進入後續風險評估。 |
+| Phase 4 | 審核、護欄與訊號判斷 | `scripts/audit/` 在 Issue 建立或標記時執行必填欄位檢查；`scripts/manager/` 執行大盤與持倉上限護欄；`scripts/monitor/` 判斷進場訊號（`auto-ok` → `signal-confirmed`）與出場訊號（`holding` → `exit-triggered`）。 |
 | Phase 5 | 報告與追蹤 | `scripts/report/` 產生每日持倉監控、出場提醒，以及每週五自動推送到 GitHub Pages 的績效儀表板。 |
 
 ---
@@ -48,6 +58,9 @@ graph TD
 scripts/
 ├── data/          # Data Agent 腳本：取得並標準化市場數據
 ├── screener/      # Screener 腳本：執行 Setup A/B/C 篩選
+├── manager/       # Manager 腳本：大盤與持倉上限護欄評估
+├── monitor/       # Monitor 腳本：進場訊號判斷、出場訊號判斷
+├── exit-checker/  # Exit Checker 腳本：執行出場 Label 操作
 ├── audit/         # Audit 腳本：護欄檢查與風險標記
 └── report/        # Report 腳本：持倉監控與績效報告
 
@@ -66,11 +79,12 @@ tests/
 
 | Workflow | 觸發時機 | 用途 |
 |---|---|---|
-| `00-data-fetch.yml` | 每個交易日收盤後（約 16:30）透過 `schedule` 觸發 | 還原前次成功的 `institutional-data` artifact；首次執行補抓 25 個交易日，之後只抓當日；執行 `scripts/data/` 產生 `data/raw/` 與 `data/rolling/`；即使 fetch 因跳過日期而 exit 1，仍透過 `if: always()` 上傳 artifact |
-| `10-screener-setup-a.yml` | `00-data-fetch.yml` 完成後 `workflow_run` 觸發，當 upstream conclusion 為 success 或 failure 時執行 | 執行 `scripts/screener/` 產生 Setup A 候選股 Issue |
-| `20-manager-loop.yml` | `00-data-fetch.yml` 完成後 `workflow_run` 觸發，當 upstream conclusion 為 success 或 failure 時執行 | 執行 `scripts/manager/` 檢查大盤與持倉上限護欄 |
-| `30-signal-monitor.yml` | `20-manager-loop.yml` 成功後 `workflow_run` 觸發 | 執行 `scripts/monitor/` 檢查出場條件並標記 `exit-triggered` |
-| `50-audit-check.yml` | Issue 建立、新增 `screened`/`signal-confirmed`/`holding` Label，或留言 `/re-audit` 時觸發 | 執行 `scripts/audit/` 檢查欄位與護欄 |
+| `00-data-fetch.yml` | 每個交易日收盤後（約 18:30 台灣時間）透過 `schedule` 觸發 | 還原前次成功的 `institutional-data` artifact；首次執行補抓 25 個交易日，之後只抓當日；執行 `scripts/data/` 產生 `data/raw/` 與 `data/rolling/`；即使 fetch 因跳過日期而 exit 1，仍透過 `if: always()` 上傳 artifact |
+| `10-screener-setup-a.yml` | 【異動】`00-data-fetch.yml` 完成後 `workflow_run` 觸發，僅當 upstream conclusion 為 `success` 時執行 | 執行 `scripts/screener/` 產生 Setup A 候選股 Issue（labels: `setup-a`, `screened`）。原本接在 `20-manager-loop.yml` 之後，現改為緊接資料抓取完成後執行，讓候選股能在同一天進入風險評估 |
+| `20-manager-loop.yml` | 【異動】`10-screener-setup-a.yml` 完成後 `workflow_run` 觸發，當 upstream conclusion 為 `success` 或 `failure` 時執行（排除 `cancelled`） | 執行 `scripts/manager/` 檢查大盤與持倉上限護欄，對當日新建的 `screened` Issue 標記 `auto-ok` / `human-review` / `guardrail-blocked` |
+| `30-signal-monitor.yml` | `20-manager-loop.yml` 成功後 `workflow_run` 觸發 | 【新增職責】掃描 `auto-ok` Issue，判斷價格是否回落至 `entry_zone`，符合則標記 `signal-confirmed`；【既有職責】掃描 `holding` Issue 檢查出場條件，產生 monitor report |
+| `40-exit-checker.yml` | `30-signal-monitor.yml` 成功後 `workflow_run` 觸發 | 讀取 monitor report，對觸發出場/停損條件的 `holding` Issue 標記 `exit-triggered`（並視情況加上 `result-stoploss-hit`），移除 `holding` |
+| `50-audit-check.yml` | Issue 建立、新增 `screened`/`signal-confirmed`/`holding` Label，或留言 `/re-audit` 時觸發 | 執行 `scripts/audit/` 檢查欄位與護欄。**注意**：本次調整後，`signal-confirmed` 事件才會由 `30-signal-monitor.yml` 實際觸發（先前無任何腳本會標記此 label） |
 | `60-performance-report.yml` | 每週五台灣時間 18:30 透過 `schedule` 觸發，或 `workflow_dispatch` 手動觸發 | 執行 `scripts/report/generate_report.py` 並部署到 GitHub Pages |
 | `99-guardrail-check.yml` | 被其他 workflow 以 `workflow_call` 呼叫 | 執行 `scripts/guardrail/pre_run_check.py` 檢查資料與環境 |
 
@@ -78,7 +92,7 @@ tests/
 
 ## 護欄規則清單
 
-Audit Action 會對每個候選股 Issue 執行以下護欄檢查。未通過者將被標記為 `guardrail-blocked`。
+Audit Action 會對每個候選股 Issue 執行以下護欄檢查。未通過者將被標記為 `data-missing`（欄位/數值不符）或由 Manager Loop 標記為 `guardrail-blocked`（風控上限觸發）。
 
 1. **必填欄位護欄**：Issue 必須包含該 Setup 模板中的所有必填欄位；缺少任一欄位即拒絕。
 2. **風險占比護欄**：`risk_r_pct` 必須 ≤ `1.0`。
@@ -87,6 +101,8 @@ Audit Action 會對每個候選股 Issue 執行以下護欄檢查。未通過者
 5. **Setup C 最近三日護欄**：`foreign_recent_3d` 必須為 `true`。
 6. **Setup C 進場日護欄**：`entry_day` 僅允許 `2`、`3`、`4`。
 7. **市值門檻護欄**：`market_cap_b` 必須大於策略設定的最低門檻（由 Phase 3 策略腳本定義）。
+8. **持倉上限護欄**：目前 `holding` 中的 Issue 數量達 6 檔時，Manager Loop 會標記新候選為 `guardrail-blocked`，暫停開新倉。
+9. **大盤急跌護欄**：加權指數單日跌幅超過 2% 時，Manager Loop 會將當日新候選標記為 `human-review`，暫停自動核可。
 
 ---
 
@@ -94,10 +110,11 @@ Audit Action 會對每個候選股 Issue 執行以下護欄檢查。未通過者
 
 當自動化流程遇到需要人工判斷的情境時，可透過 Label 進行手動介入：
 
-- **`human-review`**：貼上此 Label 後，對應 Issue 會暫停自動狀態轉換，等待人工覆核。覆核完成後由人工移除或改為其他風險標籤。
-- **`auto-ok`**：表示該 Issue 已通過自動化護欄檢查，可繼續後續流程。
-- **`data-missing`**：表示資料不完整，Audit Action 會留下評論要求補齊欄位或重新觸發數據管線。
-- **`guardrail-blocked`**：表示未通過護欄，Issue 會被自動標記並視情況關閉。
+- **`human-review`**：貼上此 Label 後（或由 Manager Loop 自動貼上），對應 Issue 建議暫停自動狀態轉換，等待人工覆核。**注意**：目前系統不會自動移除此標籤，需人工判斷風險解除後手動移除。
+- **`auto-ok`**：表示該 Issue 已通過 Manager Loop 的大盤/持倉護欄檢查，會進入 `30-signal-monitor.yml` 的進場訊號判斷階段，等待價格回落至建議進場區間。
+- **`signal-confirmed`**：表示進場訊號已成立（價格已回落至 `entry_zone`），**仍需人工判斷是否實際進場**。若決定進場，請手動將 Label 改為 `holding`，並在 Issue 留言補上 `entry_date`、`entry_price`、`setup_type` 三個欄位，供後續出場監控使用。
+- **`data-missing`**：表示資料不完整或欄位不符規則，Audit Action 會留下評論要求補齊欄位；補齊後留言 `/re-audit` 重新觸發驗證。
+- **`guardrail-blocked`**：表示未通過風控護欄（大盤急跌或持倉滿），建議人工評估後續是否有必要手動介入。
 
 **注意**：手動貼上狀態 Label（`screened`、`signal-confirmed`、`holding`、`exit-triggered`）仍會觸發 Projects Board 欄位移動，即使同時貼有 `human-review`。建議先完成人工覆核，再貼上狀態 Label。
 
