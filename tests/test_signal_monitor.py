@@ -7,6 +7,7 @@ from unittest.mock import patch
 import pytest
 
 from scripts.monitor.signal_monitor import (
+    check_entry_signal,
     compute_price_metrics,
     evaluate_signals,
     parse_entry_info,
@@ -195,3 +196,164 @@ def test_main_reports_stoploss_without_labeling(
     )
 
     os.remove(report_path)
+
+
+def test_check_entry_signal_returns_none_when_metrics_unavailable():
+    with patch("scripts.monitor.signal_monitor.fetch_price_metrics", return_value=None):
+        signal = check_entry_signal("2330", "20260728")
+    assert signal is None
+
+
+@patch("scripts.monitor.signal_monitor.fetch_price_metrics")
+def test_check_entry_signal_with_mocked_metrics(mock_fetch):
+    mock_fetch.return_value = {"close": 105.0, "ma5": 100.0, "ma20": 110.0}
+    signal = check_entry_signal("2330", "20260728")
+    assert signal is not None
+    assert signal["triggered"] is True
+    assert signal["close"] == 105.0
+    assert signal["ma5"] == 100.0
+    assert signal["ma20"] == 110.0
+    assert signal["lower"] == 100.0
+    assert signal["upper"] == 110.0
+
+
+@patch("scripts.monitor.signal_monitor.fetch_price_metrics")
+def test_check_entry_signal_not_triggered_when_close_outside_zone(mock_fetch):
+    mock_fetch.return_value = {"close": 95.0, "ma5": 100.0, "ma20": 110.0}
+    signal = check_entry_signal("2330", "20260728")
+    assert signal is not None
+    assert signal["triggered"] is False
+
+
+@patch("scripts.monitor.signal_monitor._run_gh")
+@patch("scripts.monitor.signal_monitor.fetch_price_metrics")
+@patch("scripts.monitor.signal_monitor.get_issue_details")
+@patch("scripts.monitor.signal_monitor.get_auto_ok_issues")
+@patch("scripts.monitor.signal_monitor.get_holding_issues")
+@patch("scripts.monitor.signal_monitor.load_raw_files")
+@patch("scripts.monitor.signal_monitor._today_str")
+@patch("scripts.monitor.signal_monitor._today_compact")
+def test_main_entry_signal_confirms_auto_ok_issue(
+    mock_compact,
+    mock_today,
+    mock_raw,
+    mock_holding,
+    mock_auto_ok,
+    mock_details,
+    mock_fetch,
+    mock_gh,
+):
+    """When close is inside MA5/MA20 zone, labels move screened/auto-ok -> signal-confirmed."""
+    mock_today.return_value = "2026-07-28"
+    mock_compact.return_value = "20260728"
+    mock_raw.return_value = _make_raw_data(
+        "2330", [1.0, 2.0, 3.0, 4.0], [1.0, 2.0, 3.0, 4.0]
+    )
+    mock_holding.return_value = []
+    mock_auto_ok.return_value = [{"number": 77, "title": "[Setup-A][20260727] 2330 台積電", "labels": []}]
+    mock_details.return_value = {
+        "number": 77,
+        "title": "[Setup-A][20260727] 2330 台積電",
+        "body": "- **ticker**: 2330\n- **entry_zone**: 100.00-110.00",
+        "labels": [{"name": "setup-a"}, {"name": "screened"}, {"name": "auto-ok"}],
+        "comments": [],
+    }
+    mock_fetch.return_value = {"close": 105.0, "ma5": 100.0, "ma20": 110.0}
+
+    def fake_gh(args):
+        class Result:
+            returncode = 0
+            stderr = ""
+            stdout = ""
+
+        return Result()
+
+    mock_gh.side_effect = fake_gh
+
+    from scripts.monitor.signal_monitor import main
+
+    assert main() == 0
+
+    calls = [call.args[0] for call in mock_gh.call_args_list]
+    edit_calls = [c for c in calls if len(c) > 1 and c[1] == "edit"]
+    comment_calls = [c for c in calls if len(c) > 1 and c[1] == "comment"]
+
+    assert any(
+        c == ["issue", "edit", "77", "--remove-label", "screened", "--remove-label", "auto-ok", "--add-label", "signal-confirmed"]
+        for c in edit_calls
+    ), f"Expected label edit not found in {edit_calls}"
+    assert len(comment_calls) == 1
+    comment_args = comment_calls[0]
+    body_index = comment_args.index("--body") + 1
+    comment_body = comment_args[body_index]
+    assert "105.0" in comment_body
+    assert "100.0" in comment_body
+    assert "110.0" in comment_body
+    assert "100.00-110.00" in comment_body
+    assert "訊號確認，符合進場條件" in comment_body
+
+    report_path = "data/monitor/monitor_report_20260728.json"
+    if os.path.exists(report_path):
+        os.remove(report_path)
+
+
+@patch("scripts.monitor.signal_monitor._run_gh")
+@patch("scripts.monitor.signal_monitor.fetch_price_metrics")
+@patch("scripts.monitor.signal_monitor.get_issue_details")
+@patch("scripts.monitor.signal_monitor.get_auto_ok_issues")
+@patch("scripts.monitor.signal_monitor.get_holding_issues")
+@patch("scripts.monitor.signal_monitor.load_raw_files")
+@patch("scripts.monitor.signal_monitor._today_str")
+@patch("scripts.monitor.signal_monitor._today_compact")
+def test_main_entry_signal_no_label_change_when_not_triggered(
+    mock_compact,
+    mock_today,
+    mock_raw,
+    mock_holding,
+    mock_auto_ok,
+    mock_details,
+    mock_fetch,
+    mock_gh,
+):
+    """When close is outside MA5/MA20 zone, no label changes occur."""
+    mock_today.return_value = "2026-07-28"
+    mock_compact.return_value = "20260728"
+    mock_raw.return_value = _make_raw_data(
+        "2330", [1.0, 2.0, 3.0, 4.0], [1.0, 2.0, 3.0, 4.0]
+    )
+    mock_holding.return_value = []
+    mock_auto_ok.return_value = [{"number": 78, "title": "[Setup-A][20260727] 2330 台積電", "labels": []}]
+    mock_details.return_value = {
+        "number": 78,
+        "title": "[Setup-A][20260727] 2330 台積電",
+        "body": "- **ticker**: 2330\n- **entry_zone**: 100.00-110.00",
+        "labels": [{"name": "setup-a"}, {"name": "screened"}, {"name": "auto-ok"}],
+        "comments": [],
+    }
+    mock_fetch.return_value = {"close": 95.0, "ma5": 100.0, "ma20": 110.0}
+
+    def fake_gh(args):
+        class Result:
+            returncode = 0
+            stderr = ""
+            stdout = ""
+
+        return Result()
+
+    mock_gh.side_effect = fake_gh
+
+    from scripts.monitor.signal_monitor import main
+
+    assert main() == 0
+
+    calls = [call.args[0] for call in mock_gh.call_args_list]
+    edit_calls = [c for c in calls if len(c) > 1 and c[1] == "edit"]
+    comment_calls = [c for c in calls if len(c) > 1 and c[1] == "comment"]
+
+    assert not any("signal-confirmed" in c for c in edit_calls)
+    assert not any("--remove-label" in c for c in edit_calls)
+    assert len(comment_calls) == 0
+
+    report_path = "data/monitor/monitor_report_20260728.json"
+    if os.path.exists(report_path):
+        os.remove(report_path)
