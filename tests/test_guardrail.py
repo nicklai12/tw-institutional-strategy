@@ -129,3 +129,21 @@ def test_main_passes(mock_get, mock_output):
         assert main() == 0
 
     mock_output.assert_called_with("passed", "true")
+
+
+@patch("scripts.guardrail.pre_run_check._set_output")
+@patch("scripts.guardrail.pre_run_check.requests.get")
+def test_main_passes_when_screener_done(mock_get, mock_output):
+    """today_screener_done should not fail passed; it only sets screener_done."""
+    mock_get.return_value.raise_for_status = lambda: None
+    mock_get.return_value.json.return_value = {"stat": "OK", "data": [["row"]]}
+
+    with patch("scripts.guardrail.pre_run_check.check_holding_count", return_value=3), \
+         patch("scripts.guardrail.pre_run_check.check_today_screener_done", return_value=True), \
+         patch("scripts.guardrail.pre_run_check.check_rolling_data", return_value=True):
+        from scripts.guardrail.pre_run_check import main
+
+        assert main() == 0
+
+    mock_output.assert_any_call("screener_done", "true")
+    mock_output.assert_called_with("passed", "true")

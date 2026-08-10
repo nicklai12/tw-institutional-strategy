@@ -17,12 +17,16 @@ on:
       passed:
         description: "Guardrail 是否通過"
         value: ${{ jobs.guardrail.outputs.passed }}
+      screener_done:
+        description: "今日 Setup A 是否已執行完畢"
+        value: ${{ jobs.guardrail.outputs.screener_done }}
 
 jobs:
   guardrail:
     runs-on: ubuntu-latest
     outputs:
       passed: ${{ steps.check.outputs.passed }}
+      screener_done: ${{ steps.check.outputs.screener_done }}
 
     steps:
       - name: Checkout repository

@@ -18,7 +18,7 @@ jobs:
       contents: read
       issues: write
       actions: write
-    if: github.event.workflow_run.conclusion == 'success'
+    if: ${{ github.event.workflow_run.conclusion == 'success' && needs.guardrail.outputs.screener_done != 'true' }}
 
     steps:
       - name: Checkout repository

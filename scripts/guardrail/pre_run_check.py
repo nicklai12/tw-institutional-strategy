@@ -206,17 +206,18 @@ def main() -> int:
     # Check 5
     screener_done = check_today_screener_done(today_str, max_candidates)
     report["today_screener_done"] = screener_done
+    _set_output("screener_done", "true" if screener_done else "false")
     if screener_done:
-        print(f"GUARDRAIL SKIP: 今日 Setup A 已執行完畢")
-        _write_report(report, today_compact)
-        _set_output("passed", "false")
-        return 0
+        print(f"GUARDRAIL INFO: 今日 Setup A 已執行完畢")
 
     report["overall_pass"] = True
     _write_report(report, today_compact)
     _set_output("passed", "true")
 
-    print("GUARDRAIL PASS: all checks passed")
+    if screener_done:
+        print("GUARDRAIL PASS: environment checks passed; screener already done today")
+    else:
+        print("GUARDRAIL PASS: all checks passed")
     return 0
 
 
