@@ -12,6 +12,12 @@ from typing import Any
 
 import requests
 
+# Allow `from scripts.screener.setup_a import ...` to work when this script is run
+# directly from the repo root (e.g. in GitHub Actions).
+_repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if _repo_root not in sys.path:
+    sys.path.insert(0, _repo_root)
+
 from scripts.screener.setup_a import fetch_price_metrics
 
 
