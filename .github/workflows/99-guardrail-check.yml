@@ -13,6 +13,11 @@ on:
         required: false
         type: string
         default: "5"
+      data_fetch_run_id:
+        description: "指定的 00-data-fetch run ID（避免 gh run list 查到舊 run）"
+        required: false
+        type: string
+        default: ""
     outputs:
       passed:
         description: "Guardrail 是否通過"
@@ -47,13 +52,18 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Fetching latest successful 00-data-fetch run ..."
-          DATA_RUN_ID=$(gh run list \
-            --workflow=00-data-fetch.yml \
-            --status=success \
-            --limit=1 \
-            --json databaseId \
-            --jq '.[0].databaseId')
+          if [ -n "${{ inputs.data_fetch_run_id }}" ]; then
+            DATA_RUN_ID="${{ inputs.data_fetch_run_id }}"
+            echo "Using specified 00-data-fetch run ID: $DATA_RUN_ID"
+          else
+            echo "Fetching latest successful 00-data-fetch run ..."
+            DATA_RUN_ID=$(gh run list \
+              --workflow=00-data-fetch.yml \
+              --status=success \
+              --limit=1 \
+              --json databaseId \
+              --jq '.[0].databaseId')
+          fi
           if [ -z "$DATA_RUN_ID" ]; then
             echo "ERROR: Could not find a successful 00-data-fetch run"
             exit 1

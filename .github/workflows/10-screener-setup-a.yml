@@ -10,6 +10,7 @@ jobs:
     uses: ./.github/workflows/99-guardrail-check.yml
     with:
       max_candidates: ${{ vars.MAX_CANDIDATES_PER_RUN || '5' }}
+      data_fetch_run_id: ${{ github.event.workflow_run.id }}
 
   screener-setup-a:
     runs-on: ubuntu-latest
@@ -37,14 +38,19 @@ jobs:
       - name: Step 1 - Download latest institutional data artifact
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DATA_RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
-          echo "Fetching latest successful 00-data-fetch run ..."
-          DATA_RUN_ID=$(gh run list \
-            --workflow=00-data-fetch.yml \
-            --status=success \
-            --limit=1 \
-            --json databaseId \
-            --jq '.[0].databaseId')
+          if [ -n "$DATA_RUN_ID" ]; then
+            echo "Using triggering 00-data-fetch run ID: $DATA_RUN_ID"
+          else
+            echo "Fetching latest successful 00-data-fetch run ..."
+            DATA_RUN_ID=$(gh run list \
+              --workflow=00-data-fetch.yml \
+              --status=success \
+              --limit=1 \
+              --json databaseId \
+              --jq '.[0].databaseId')
+          fi
           if [ -z "$DATA_RUN_ID" ]; then
             echo "ERROR: Could not find a successful 00-data-fetch run"
             exit 1
