@@ -12,6 +12,25 @@
 
 ---
 
+> **本次更新（Setup B/C 規格鎖定）：**
+> 1. Workflow 觸發鏈擴充：在 `00-data-fetch.yml` 完成後，並行觸發 `10-screener-setup-a.yml`、`11-screener-setup-b.yml`、`12-screener-setup-c.yml`；三個 screener 產生的 `screened` Issue 皆由同一個 `20-manager-loop.yml` 統一評估。
+> 2. `20-manager-loop.yml` 的 `workflow_run` 觸發條件調整為同時監聽 `10/11/12` 三個 workflow 的 `completed` 事件。
+> 3. `scripts/data/compute_rolling.py` 新增 `foreign_buy_streak_day`（Setup C 外資連買天數）欄位；Setup B 的 `foreign_10d_direction` 改由 Setup B screener 計算（見 7.8），不寫入 rolling。
+> 4. `scripts/monitor/signal_monitor.py` 進場判斷擴充 Setup B（突破後量縮不破）與 Setup C（外資連買第 N 天）規則；出場判斷已依 `setup_type` 分流，Setup A/B/C 規則均已存在於程式碼中。
+> 5. Issue body 欄位新增 Setup B 的 `breakout_date`、`breakout_volume_m`，以及 Setup C 的 `foreign_buy_streak_day`（參考欄位，由 screener 計算後寫入）。
+>
+> ⚠️ **本次 Setup B/C 規格鎖定仍有以下項目待人工確認（後附建議方案）：**
+> - `foreign_10d_direction` 判定「明顯大賣」的具體閾值。
+>   - **建議**：不由 `compute_rolling.py` 計算，改由 Setup B screener 使用股價/成交量資料計算：`foreign_avg_daily_net / avg_daily_volume_shares`，絕對值超過 `5%` 才判定為 buying / selling，否則 neutral；閾值設為 env var `FOREIGN_10D_DIRECTION_THRESHOLD`，預設 `0.05`。
+> - Setup B 量縮條件的成交金額比率閾值，以及「隔天/第三天」的確切天數定義。
+>   - **建議**：等待天數為突破日後第 1、2 個交易日（`trading_days_after_breakout ∈ {1, 2}`）；量縮條件為 `volume_today_m ≤ breakout_volume_m × 0.8`，比率設為 env var `SETUP_B_VOLUME_CONTRACTION_RATIO`，預設 `0.8`。
+> - Setup C 進場是以 Issue body 的 `entry_day` 單一固定日為準，還是第 2~4 天任一天均可進場。
+>   - **建議**：採用窗口制，monitor 在 `2 ≤ foreign_buy_streak_day ≤ 4` 任一天皆可確認進場；`entry_day` 保留為 screener 建議的首選日（資訊欄）。
+> - 停損觸發應以 Issue body 的 `stop_loss_price` 為準，還是沿用 `signal_monitor.py` 目前的 `setup_type` 百分比對照表。
+>   - **建議**：沿用百分比對照表（a: -7%、b: -6%、c: -5%），並以實際 `entry_price` 計算真實停損價；Issue body 的 `stop_loss_price` 僅作為 screener 階段參考。
+> - Setup C 的 `entry_zone` 在 screener 階段應如何預填。
+>   - **建議**：screener 預填描述文字「外資連買第 N 天當日價格區間（由 signal monitor 於進場日動態確認）」，monitor 於進場日在留言中補上 `[today_low, today_high]`。
+
 ## 1. Label 規格
 
 所有 Label 由 `scripts/setup-labels.sh` 建立，分為四類：策略、狀態、風險、結果。
@@ -103,11 +122,13 @@
 - **avg_volume_20d_m**
 - **trust_10d_net**: 投信 10 日淨買超
 - **trust_10d_buy_days**: 投信 10 日買超天數（必須 ≥ 7）
-- **foreign_10d_direction**: 外資 10 日方向
+- **foreign_10d_direction**: 外資 10 日方向（buying / neutral / selling，由 Setup B screener 依外資日均淨買超相對成交量比率計算，見 7.8）
 - **close_vs_ma20**
-- **breakout_price**: 突破價
-- **entry_zone**
-- **stop_loss_price**
+- **breakout_price**: 突破點位（近 20 日區間高點）
+- **breakout_date**: 突破日期（YYYY-MM-DD，用於計算「隔天/第三天」等待天數）
+- **breakout_volume_m**: 突破日成交金額（百萬台幣，用於 signal monitor 量縮判斷）
+- **entry_zone**: 建議進場區間（靜態參考值；實際進場公式見 7.6.2）
+- **stop_loss_price**: 停損價參考值（以 screen_date 收盤計算，實際停損由 monitor 依 entry_price 與 setup_type 百分比計算，見 7.7）
 - **position_size_lots**
 - **risk_r_pct**
 - **artifact_run_id**
@@ -120,11 +141,12 @@
 - **screen_date**
 - **market_cap_b**: 市值（億）
 - **foreign_20d_net**: 外資 20 日淨值（必須為負）
-- **foreign_recent_3d**: 外資近 3 日是否轉買（true / false，必須為 true）
+- **foreign_recent_3d**: 外資近 3 日是否轉買（true / false，必須為 true；對應 rolling 欄位 `foreign_recent_3d_all_buy`）
+- **foreign_buy_streak_day**: 截至 screen_date 外資連續買超天數（參考欄位，由 screener 計算後寫入）
 - **price_bottom_status**: 底部狀態
-- **entry_day**: 進場日（僅允許 2、3、4）
-- **entry_zone**
-- **stop_loss_price**
+- **entry_day**: 建議進場日（僅允許 2、3、4；資訊欄，實際 monitor 以 2–4 天窗口判斷，見 7.6.3）
+- **entry_zone**: 建議進場區間（screener 預填描述文字，實際進場日由 monitor 以當日價格區間動態確認，見 7.6.3）
+- **stop_loss_price**: 停損價參考值（以 screen_date 收盤計算，實際停損由 monitor 依 entry_price 與 setup_type 百分比計算，見 7.7）
 - **position_size_lots**
 - **risk_r_pct**
 - **artifact_run_id**
@@ -359,11 +381,20 @@
       "trust_10d_buy_days": 7,
       "foreign_10d_net": 5000,
       "foreign_20d_net": 10000,
-      "foreign_recent_3d_all_buy": true
+      "foreign_recent_3d_all_buy": true,
+      "foreign_buy_streak_day": 3
     }
   ]
 }
 ```
+
+#### 5.7.1 Setup B/C 新增欄位說明
+
+| 欄位 | 計算公式 | 用途 |
+|---|---|---|
+| `foreign_buy_streak_day` | 從最新交易日往前數，連續 `foreign_net > 0` 的天數；遇到 `foreign_net ≤ 0` 即中斷 | Setup C screener 決定建議 `entry_day`，以及 monitor 判斷進場日 |
+
+`foreign_10d_direction`（Setup B）**不寫入 rolling**，改由 Setup B screener 在取得股價與成交量後計算（見 7.8），避免在缺少成交量的 rolling 資料中做不合理的絕對閾值判斷。
 
 ---
 
@@ -372,9 +403,11 @@
 | Workflow | 觸發條件 | 說明 |
 |---|---|---|
 | `00-data-fetch.yml` | `schedule` | 每個交易日收盤後約 18:30 TW；首次執行補抓 25 日，之後還原前次 artifact 並只抓當日；fetch 因跳過日期 exit 1 時仍上傳 artifact（if: always()） |
-| `10-screener-setup-a.yml` | `workflow_run` | 【變更】`00-data-fetch.yml` 完成後執行（僅 conclusion == 'success'）；原為接在 20-manager-loop 之後 |
-| `20-manager-loop.yml` | `workflow_run` | 【變更】`10-screener-setup-a.yml` 完成後，且 conclusion 為 success 或 failure 時執行（排除 cancelled）；原為接在 00-data-fetch 之後 |
-| `30-signal-monitor.yml` | `workflow_run` | `20-manager-loop.yml` 成功後（順序不變，但職責新增進場訊號判斷） |
+| `10-screener-setup-a.yml` | `workflow_run` | `00-data-fetch.yml` 完成後執行（僅 conclusion == 'success'） |
+| `11-screener-setup-b.yml` | `workflow_run` | `00-data-fetch.yml` 完成後執行（僅 conclusion == 'success'） |
+| `12-screener-setup-c.yml` | `workflow_run` | `00-data-fetch.yml` 完成後執行（僅 conclusion == 'success'） |
+| `20-manager-loop.yml` | `workflow_run` | `10-screener-setup-a.yml`、`11-screener-setup-b.yml`、`12-screener-setup-c.yml` 完成後，且 conclusion 為 success 或 failure 時執行（排除 cancelled） |
+| `30-signal-monitor.yml` | `workflow_run` | `20-manager-loop.yml` 成功後（進場訊號判斷 + 出場訊號判斷） |
 | `40-exit-checker.yml` | `workflow_run` | `30-signal-monitor.yml` 成功後（不變） |
 | `50-audit-check.yml` | `issues` / `issue_comment` | Issue 被標記 `screened`/`signal-confirmed`/`holding`，或留言 `/re-audit`。**注意**：`signal-confirmed` 事件在本次調整後才會被實際觸發 |
 | `60-performance-report.yml` | `schedule` / `workflow_dispatch` | 每週五台灣時間 18:30，或可手動觸發 |
@@ -414,7 +447,11 @@ days_held = report_date - entry_date（日曆天數）
 
 從 Issue 的最新 monitor 評論中擷取 `相對進場損益：{value}%`；若無則顯示 `N/A`。
 
-### 7.6 進場訊號判斷規則（新增，⚠️ 待確認）
+### 7.6 進場訊號判斷規則
+
+Signal Monitor 對 `auto-ok` Issue 每日判斷是否進場。各 Setup 規則如下：
+
+#### 7.6.1 Setup A
 
 ```
 entry_confirmed = min(MA5, MA20) ≤ close ≤ max(MA5, MA20)
@@ -422,7 +459,99 @@ entry_confirmed = min(MA5, MA20) ≤ close ≤ max(MA5, MA20)
 
 - `entry_zone` 數值來源：Issue body 中 screener 建立當下寫入的**靜態值**，非重新計算當下的 MA5/MA20。
 - 判斷成立時，標記 `signal-confirmed`，並依 1.5 節約定同步移除 `screened`、`auto-ok`。
-- 此規則目前僅適用於 Setup A（`entry_zone` 為 MA5~MA20 區間）；Setup B（`breakout_price`）、Setup C（`entry_day`）尚未定義對應的進場訊號規則，需另行確認。
+
+#### 7.6.2 Setup B
+
+```
+trading_days_after_breakout = 今日與 breakout_date 之間的交易日天數（不含 breakout_date）
+entry_confirmed =
+    trading_days_after_breakout ∈ {1, 2}
+    AND close ≥ breakout_price
+    AND volume_today_m ≤ breakout_volume_m × SETUP_B_VOLUME_CONTRACTION_RATIO
+
+SETUP_B_VOLUME_CONTRACTION_RATIO = 0.8（建議預設值，可透過 env var 調整）
+```
+
+- `breakout_date`、`breakout_price`、`breakout_volume_m` 皆來自 Issue body 的靜態值。
+- `volume_today_m` 由 Signal Monitor 於判斷當日透過股價 API 取得（單位：百萬台幣）。
+- 等待天數定義為突破日後第 1、2 個交易日（「隔天」= T+1，「第三天」= T+2）。
+- 若條件成立，標記 `signal-confirmed`，並依 1.5 節約定同步移除 `screened`、`auto-ok`。
+
+#### 7.6.3 Setup C
+
+```
+foreign_buy_streak_day = 截至今日外資連續買超天數（raw data 中 foreign_net > 0 的連續天數）
+entry_confirmed = 2 ≤ foreign_buy_streak_day ≤ 4 AND close > 0
+entry_zone = [today_low, today_high]
+```
+
+- `entry_day` 來自 Issue body（`2` / `3` / `4`），作為 screener 建議的首選進場日；monitor 實際以 2–4 天窗口判斷。
+- `today_low`、`today_high` 由 Signal Monitor 於判斷當日取得。
+- screener 階段的 `entry_zone` 預填描述文字：「外資連買第 N 天當日價格區間（由 signal monitor 於進場日動態確認）」。
+- 若條件成立，標記 `signal-confirmed`，並依 1.5 節約定同步移除 `screened`、`auto-ok`。
+
+### 7.7 出場訊號判斷規則
+
+Signal Monitor 對 `holding` Issue 每日判斷出場條件。`stoploss_triggered` 為各 Setup 通用邏輯：
+
+```
+pnl_pct = (close - entry_price) / entry_price × 100
+stoploss_triggered = pnl_pct ≤ -_SETUP_STOP_LOSS_PCT[setup_type]
+```
+
+其中 `_SETUP_STOP_LOSS_PCT` 對照表為 `a: 7.0`、`b: 6.0`、`c: 5.0`。
+
+- Issue body 中的 `stop_loss_price` 為 screener 階段參考值（以 screen_date 收盤計算）。
+- 實際停損觸發以**人工回填的 `entry_price`** 與上述百分比對照表計算，確保停損點反映真實進場成本。
+
+#### 7.7.1 Setup A
+
+| 出場條件 | 資料來源與判斷式 |
+|---|---|
+| E1 法人轉弱 | `raw data` 最近 3 日：`foreign_net` 連續 3 日負 或 `trust_net` 連續 3 日負 |
+| E2 價格轉弱 | 股價 API：`today_close < MA20` 且 `prev_close < MA20`（連續兩日收盤跌破 MA20） |
+| E3 時間停利 | `raw data` 交易日計數：`trading_days_since_entry ≥ 20` |
+
+#### 7.7.2 Setup B
+
+| 出場條件 | 資料來源與判斷式 |
+|---|---|
+| E1 投信連續賣超（先出一半） | `raw data` 最近 2 日：`trust_net` 連續 2 日負 |
+| E2 跌破 MA10 / 前低（全出） | 股價 API：`close < MA10` 或 `close < recent_low_20d`；且須同時滿足 E1 |
+
+- `partial_signals` 記錄 E1；`exit_signals` 記錄 E2。
+- 當 E2 成立時，已包含 E1 條件，因此全出訊號觸發時 partial 訊號亦會存在。
+
+#### 7.7.3 Setup C
+
+| 出場條件 | 資料來源與判斷式 |
+|---|---|
+| E1 外資連續轉賣 | `raw data` 最近 2 日：`foreign_net` 連續 2 日負 |
+| E2 跌破整理區間下緣 | 股價 API：`close < recent_low_10d`（以 10 日低點作為整理區間下緣） |
+| 停利提醒 | `pnl_pct` 落在 `8% ~ 12%` 區間時標記 `stopprofit_reminder` |
+
+- 規格書原始描述為「外資再度連續 2～3 日轉賣」；目前程式碼實作以連續 2 日為觸發條件。是否改為 2 日或 3 日為待確認項目。
+
+### 7.8 Setup B 外資 10 日方向計算
+
+`foreign_10d_direction` **不寫入 `data/rolling`**，由 Setup B screener 在取得股價與成交量後計算：
+
+```
+avg_daily_volume_shares = avg_volume_20d_m × 1000 / close
+foreign_avg_daily_net     = foreign_10d_net / 10
+ratio                     = foreign_avg_daily_net / avg_daily_volume_shares
+
+foreign_10d_direction =
+    ratio >  +FOREIGN_10D_DIRECTION_THRESHOLD → buying
+    ratio <  -FOREIGN_10D_DIRECTION_THRESHOLD → selling
+    else                                      → neutral
+
+FOREIGN_10D_DIRECTION_THRESHOLD = 0.05（建議預設值，可透過 env var 調整）
+```
+
+- `avg_volume_20d_m` 與 `close` 由股價 API 取得（單位：百萬台幣）。
+- `foreign_10d_net` 來自 `data/rolling` 或當日 raw data 的 10 日累加。
+- 此欄位寫入 Issue body，供 Audit 與後續追蹤使用。
 
 ---
 

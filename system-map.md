@@ -17,6 +17,25 @@
 
 ---
 
+> **本次更新（Setup B/C 規格鎖定）：**
+> 1. Workflow 觸發鏈擴充：在 `00-data-fetch.yml` 完成後，並行觸發 `10-screener-setup-a.yml`、`11-screener-setup-b.yml`、`12-screener-setup-c.yml`；三個 screener 產生的 `screened` Issue 皆由同一個 `20-manager-loop.yml` 評估。
+> 2. `20-manager-loop.yml` 的 `workflow_run` 觸發條件調整為同時監聽 `10/11/12` 三個 workflow 的 `completed` 事件。
+> 3. `scripts/data/compute_rolling.py` 新增 `foreign_buy_streak_day`（Setup C 外資連買天數）欄位；Setup B 的 `foreign_10d_direction` 改由 Setup B screener 計算，不寫入 rolling。
+> 4. `scripts/monitor/signal_monitor.py` 的進場判斷擴充 Setup B（突破後量縮不破）與 Setup C（外資連買第 N 天）規則；出場判斷已依 `setup_type` 分流，Setup A/B/C 規則均已存在於程式碼中。
+> 5. Issue body 新增 Setup B 的 `breakout_date`、`breakout_volume_m`，以及 Setup C 的 `foreign_buy_streak_day`（參考欄位，由 screener 計算後寫入）。
+>
+> ⚠️ **本次 Setup B/C 規格鎖定仍有以下項目待人工確認（後附建議方案）：**
+> - `foreign_10d_direction` 判定「明顯大賣」的具體閾值。
+>   - **建議**：不由 `compute_rolling.py` 計算，改由 Setup B screener 使用股價/成交量資料計算：`foreign_avg_daily_net / avg_daily_volume_shares`，絕對值超過 `5%` 才判定為 buying / selling，否則 neutral；閾值設為 env var `FOREIGN_10D_DIRECTION_THRESHOLD`，預設 `0.05`。
+> - Setup B 量縮條件的成交金額比率閾值，以及「隔天/第三天」的確切天數定義。
+>   - **建議**：等待天數為突破日後第 1、2 個交易日（`trading_days_after_breakout ∈ {1, 2}`）；量縮條件為 `volume_today_m ≤ breakout_volume_m × 0.8`，比率設為 env var `SETUP_B_VOLUME_CONTRACTION_RATIO`，預設 `0.8`。
+> - Setup C 進場是以 Issue body 的 `entry_day` 單一固定日為準，還是第 2~4 天任一天均可進場。
+>   - **建議**：採用窗口制，monitor 在 `2 ≤ foreign_buy_streak_day ≤ 4` 任一天皆可確認進場；`entry_day` 保留為 screener 建議的首選日（資訊欄）。
+> - 停損觸發應以 Issue body 的 `stop_loss_price` 為準，還是沿用 `signal_monitor.py` 目前的 `setup_type` 百分比對照表。
+>   - **建議**：沿用百分比對照表（a: -7%、b: -6%、c: -5%），並以實際 `entry_price` 計算真實停損價；Issue body 的 `stop_loss_price` 僅作為 screener 階段參考。
+> - Setup C 的 `entry_zone` 在 screener 階段應如何預填。
+>   - **建議**：screener 預填描述文字「外資連買第 N 天當日價格區間（由 signal monitor 於進場日動態確認）」，monitor 於進場日在留言中補上 `[today_low, today_high]`。
+
 ## 1. 整體資料流
 
 ```mermaid
@@ -88,9 +107,11 @@ graph TD
 | 檔案 | 觸發 | 職責 |
 |---|---|---|
 | `00-data-fetch.yml` | `schedule` 每日收盤後 | 還原前次 artifact，首次執行補抓 25 日、之後只抓當日；執行 data scripts；不論 fetch 是否因跳過日期而 exit 1，皆上傳 institutional-data artifact（if: always()） |
-| `10-screener-setup-a.yml` | `workflow_run` 於 `00-data-fetch.yml` 完成後 【變更：原接在 20-manager-loop 之後】 | 當 upstream conclusion 為 success 時執行。執行 Setup A screener 並建立 Issues（labels: setup-a, screened） |
-| `20-manager-loop.yml` | `workflow_run` 於 `10-screener-setup-a.yml` 完成後 【變更：原接在 00-data-fetch 之後】 | 當 upstream conclusion 為 success 或 failure 時執行；排除 cancelled。掃描 `screened` Issue，評估大盤/持倉風險，標記 auto-ok / human-review / guardrail-blocked |
-| `30-signal-monitor.yml` | `workflow_run` 於 `20-manager-loop.yml` 完成後 | 【新增職責】掃描 auto-ok Issue 計算進場訊號，符合則標記 signal-confirmed；【既有職責】掃描 holding Issue 計算出場訊號，產生 monitor report |
+| `10-screener-setup-a.yml` | `workflow_run` 於 `00-data-fetch.yml` 完成後 | 執行 Setup A screener 並建立 Issues（labels: `setup-a`, `screened`） |
+| `11-screener-setup-b.yml` | `workflow_run` 於 `00-data-fetch.yml` 完成後 | 執行 Setup B screener 並建立 Issues（labels: `setup-b`, `screened`） |
+| `12-screener-setup-c.yml` | `workflow_run` 於 `00-data-fetch.yml` 完成後 | 執行 Setup C screener 並建立 Issues（labels: `setup-c`, `screened`） |
+| `20-manager-loop.yml` | `workflow_run` 於 `10-screener-setup-a.yml`、`11-screener-setup-b.yml`、`12-screener-setup-c.yml` 完成後 | 當 upstream conclusion 為 success 或 failure 時執行；排除 cancelled。掃描當日所有 `screened` Issue，評估大盤/持倉風險，標記 `auto-ok` / `human-review` / `guardrail-blocked` |
+| `30-signal-monitor.yml` | `workflow_run` 於 `20-manager-loop.yml` 完成後 | 掃描 `auto-ok` Issue 計算進場訊號，符合則標記 `signal-confirmed`；掃描 `holding` Issue 計算出場訊號，產生 monitor report |
 | `40-exit-checker.yml` | `workflow_run` 於 `30-signal-monitor.yml` 成功後 | 讀取 monitor report，對觸發出場/停損的 holding Issue 操作 Label，並上傳 exit-checker-report artifact |
 | `50-audit-check.yml` | Issue 建立/Label 變更、`/re-audit` 留言 | 執行 audit。**注意**：`signal-confirmed` 事件在本次調整後才會被實際觸發（先前無程式碼會標記此 label） |
 | `60-performance-report.yml` | `schedule` 每週五 18:30 TW、`workflow_dispatch` | 產生報告並部署到 gh-pages |
@@ -163,7 +184,15 @@ graph TD
     └── screener-a-{run_id}
         └── data/screener/screener_result_a_YYYYMMDD.json
 
-20-manager-loop.yml（緊接 10-screener-setup-a 之後）
+11-screener-setup-b.yml（緊接 00-data-fetch 之後）
+    └── screener-b-{run_id}
+        └── data/screener/screener_result_b_YYYYMMDD.json
+
+12-screener-setup-c.yml（緊接 00-data-fetch 之後）
+    └── screener-c-{run_id}
+        └── data/screener/screener_result_c_YYYYMMDD.json
+
+20-manager-loop.yml（緊接 10/11/12 任一 screener 之後）
     └── manager-report-{run_id}
         └── data/manager/manager_report_YYYYMMDD.json
 
