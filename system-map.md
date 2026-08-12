@@ -20,16 +20,21 @@
 > **本次更新（Setup B/C 規格鎖定）：**
 > 1. Workflow 觸發鏈擴充：在 `00-data-fetch.yml` 完成後，並行觸發 `10-screener-setup-a.yml`、`11-screener-setup-b.yml`、`12-screener-setup-c.yml`；三個 screener 產生的 `screened` Issue 皆由同一個 `20-manager-loop.yml` 評估。
 > 2. `20-manager-loop.yml` 的 `workflow_run` 觸發條件調整為同時監聽 `10/11/12` 三個 workflow 的 `completed` 事件。
-> 3. `scripts/data/compute_rolling.py` 新增 `foreign_10d_direction`（Setup B 外資 10 日方向）與 `foreign_buy_streak_day`（Setup C 外資連買天數）兩個欄位。
+> 3. `scripts/data/compute_rolling.py` 新增 `foreign_buy_streak_day`（Setup C 外資連買天數）欄位；Setup B 的 `foreign_10d_direction` 改由 Setup B screener 計算，不寫入 rolling。
 > 4. `scripts/monitor/signal_monitor.py` 的進場判斷擴充 Setup B（突破後量縮不破）與 Setup C（外資連買第 N 天）規則；出場判斷已依 `setup_type` 分流，Setup A/B/C 規則均已存在於程式碼中。
 > 5. Issue body 新增 Setup B 的 `breakout_date`、`breakout_volume_m`，以及 Setup C 的 `foreign_buy_streak_day`（參考欄位，由 screener 計算後寫入）。
 >
-> ⚠️ **本次 Setup B/C 規格鎖定仍有以下項目待人工確認：**
-> - `foreign_10d_direction` 判定「明顯大賣」的具體閾值（目前僅定義 buying / neutral / selling 三態，閾值未決）。
-> - Setup B 量縮條件的成交金額比率閾值，以及「隔天/第三天」的確切天數定義（T+1 / T+2 或 T+2 / T+3）。
+> ⚠️ **本次 Setup B/C 規格鎖定仍有以下項目待人工確認（後附建議方案）：**
+> - `foreign_10d_direction` 判定「明顯大賣」的具體閾值。
+>   - **建議**：不由 `compute_rolling.py` 計算，改由 Setup B screener 使用股價/成交量資料計算：`foreign_avg_daily_net / avg_daily_volume_shares`，絕對值超過 `5%` 才判定為 buying / selling，否則 neutral；閾值設為 env var `FOREIGN_10D_DIRECTION_THRESHOLD`，預設 `0.05`。
+> - Setup B 量縮條件的成交金額比率閾值，以及「隔天/第三天」的確切天數定義。
+>   - **建議**：等待天數為突破日後第 1、2 個交易日（`trading_days_after_breakout ∈ {1, 2}`）；量縮條件為 `volume_today_m ≤ breakout_volume_m × 0.8`，比率設為 env var `SETUP_B_VOLUME_CONTRACTION_RATIO`，預設 `0.8`。
 > - Setup C 進場是以 Issue body 的 `entry_day` 單一固定日為準，還是第 2~4 天任一天均可進場。
-> - 停損觸發應以 Issue body 的 `stop_loss_price` 為準，還是沿用 `signal_monitor.py` 目前的 `setup_type` 百分比對照表（a: -7%、b: -6%、c: -5%）。
-> - Setup C 的 `entry_zone` 在 screener 階段應如何預填（進場日當天才由 monitor 動態決定當日價格區間）。
+>   - **建議**：採用窗口制，monitor 在 `2 ≤ foreign_buy_streak_day ≤ 4` 任一天皆可確認進場；`entry_day` 保留為 screener 建議的首選日（資訊欄）。
+> - 停損觸發應以 Issue body 的 `stop_loss_price` 為準，還是沿用 `signal_monitor.py` 目前的 `setup_type` 百分比對照表。
+>   - **建議**：沿用百分比對照表（a: -7%、b: -6%、c: -5%），並以實際 `entry_price` 計算真實停損價；Issue body 的 `stop_loss_price` 僅作為 screener 階段參考。
+> - Setup C 的 `entry_zone` 在 screener 階段應如何預填。
+>   - **建議**：screener 預填描述文字「外資連買第 N 天當日價格區間（由 signal monitor 於進場日動態確認）」，monitor 於進場日在留言中補上 `[today_low, today_high]`。
 
 ## 1. 整體資料流
 
