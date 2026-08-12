@@ -225,6 +225,33 @@ def test_check_entry_signal_not_triggered_when_close_outside_zone(mock_fetch):
     assert signal["triggered"] is False
 
 
+@patch("scripts.monitor.signal_monitor.compute_price_metrics")
+@patch("scripts.monitor.signal_monitor.fetch_stock_history")
+def test_fetch_price_metrics_uses_local_stock_history(mock_history, mock_compute):
+    """Local fetch_price_metrics should use the reliable exchangeReport endpoint."""
+    mock_history.return_value = [{"close": 100.0}] * 25
+    mock_compute.return_value = {
+        "close": 110.0,
+        "ma5": 105.0,
+        "ma20": 100.0,
+    }
+
+    from scripts.monitor.signal_monitor import fetch_price_metrics
+
+    result = fetch_price_metrics("2330", "20260728")
+    assert result == {"close": 110.0, "ma5": 105.0, "ma20": 100.0}
+    mock_history.assert_called_once_with("2330", "20260728")
+
+
+@patch("scripts.monitor.signal_monitor.compute_price_metrics")
+@patch("scripts.monitor.signal_monitor.fetch_stock_history")
+def test_fetch_price_metrics_returns_none_when_history_unavailable(mock_history, mock_compute):
+    mock_history.return_value = None
+    from scripts.monitor.signal_monitor import fetch_price_metrics
+    assert fetch_price_metrics("2330", "20260728") is None
+    mock_compute.assert_not_called()
+
+
 @patch("scripts.monitor.signal_monitor._run_gh")
 @patch("scripts.monitor.signal_monitor.fetch_price_metrics")
 @patch("scripts.monitor.signal_monitor.get_issue_details")

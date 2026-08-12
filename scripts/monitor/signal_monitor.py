@@ -12,15 +12,6 @@ from typing import Any
 
 import requests
 
-# Allow `from scripts.screener.setup_a import ...` to work when this script is run
-# directly from the repo root (e.g. in GitHub Actions).
-_repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-if _repo_root not in sys.path:
-    sys.path.insert(0, _repo_root)
-
-from scripts.screener.setup_a import fetch_price_metrics
-
-
 _REPORT_DIR = "data/monitor"
 _RAW_DIR = "data/raw"
 _PRICE_API_BASE = "https://www.twse.com.tw/exchangeReport/STOCK_DAY"
@@ -382,8 +373,11 @@ def compute_price_metrics(history: list[dict[str, Any]]) -> dict[str, Any] | Non
         ma20_close_direction = "站上" if today_close > ma20 else "跌破"
 
     ma10 = None
+    ma5 = None
     if len(closes) >= 10:
         ma10 = round(sum(closes[-10:]) / 10, 2)
+    if len(closes) >= 5:
+        ma5 = round(sum(closes[-5:]) / 5, 2)
 
     prev_close_below_ma20 = False
     if len(closes) >= 22:
@@ -404,10 +398,35 @@ def compute_price_metrics(history: list[dict[str, Any]]) -> dict[str, Any] | Non
         "ma20": ma20,
         "ma20_close_direction": ma20_close_direction,
         "ma10": ma10,
+        "ma5": ma5,
         "prev_close_below_ma20": prev_close_below_ma20,
         "today_close_below_ma20": ma20 is not None and today_close < ma20,
         "recent_low_20d": recent_low_20d,
         "recent_low_10d": recent_low_10d,
+    }
+
+
+def fetch_price_metrics(ticker: str, date_str: str) -> dict[str, Any] | None:
+    """Fetch daily price history and compute close, MA5 and MA20.
+
+    Uses the same TWSE endpoint as fetch_stock_history to avoid the
+    rate-limiting / blocking issues seen with the setup_a endpoint in
+    GitHub Actions.
+    """
+    history = fetch_stock_history(ticker, date_str)
+    if history is None:
+        return None
+    metrics = compute_price_metrics(history)
+    if metrics is None:
+        return None
+    ma5 = metrics.get("ma5")
+    ma20 = metrics.get("ma20")
+    if ma5 is None or ma20 is None:
+        return None
+    return {
+        "close": metrics["close"],
+        "ma5": ma5,
+        "ma20": ma20,
     }
 
 
