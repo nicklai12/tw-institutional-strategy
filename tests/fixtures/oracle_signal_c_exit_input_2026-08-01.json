@@ -1,0 +1,18 @@
+{
+  "date": "2026-08-01",
+  "setup": "c",
+  "entry_price": 98.0,
+  "close": 97.0,
+  "recent_low_10d": 97.5,
+  "foreign_net_last_2d": [
+    -100,
+    -200
+  ],
+  "expected_exit_signals": [
+    "E1 外資連續轉賣",
+    "E2 跌破整理區間下緣"
+  ],
+  "expected_stoploss_triggered": false,
+  "expected_stopprofit_reminder": false,
+  "reason": "外資連續 2 日轉賣，且收盤 97 < recent_low_10d 97.5；pnl ≈ -1.02%，未觸及 -5% 停損。spec.md 7.7.3。"
+}

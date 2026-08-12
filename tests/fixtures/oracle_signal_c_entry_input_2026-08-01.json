@@ -1,0 +1,30 @@
+{
+  "date": "2026-08-01",
+  "setup": "c",
+  "entry_day": 3,
+  "cases": [
+    {
+      "name": "外資連買第3天",
+      "foreign_buy_streak_day": 3,
+      "today_low": 99.0,
+      "today_high": 101.0,
+      "close": 100.0,
+      "expected_entry_confirmed": true,
+      "expected_entry_zone": [
+        99.0,
+        101.0
+      ],
+      "reason": "foreign_buy_streak_day=3 落在 2–4 窗口，符合 spec.md 7.6.3。"
+    },
+    {
+      "name": "外資連買第1天",
+      "foreign_buy_streak_day": 1,
+      "today_low": 99.0,
+      "today_high": 101.0,
+      "close": 100.0,
+      "expected_entry_confirmed": false,
+      "expected_entry_zone": null,
+      "reason": "foreign_buy_streak_day=1 不在 2–4 進場窗口。"
+    }
+  ]
+}

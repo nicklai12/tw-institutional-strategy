@@ -1,0 +1,33 @@
+{
+  "date": "2026-08-01",
+  "setup": "b",
+  "breakout_date": "2026-07-31",
+  "breakout_price": 100.0,
+  "breakout_volume_m": 50.0,
+  "cases": [
+    {
+      "name": "T+1量縮不破",
+      "today_date": "2026-08-01",
+      "close": 102.0,
+      "volume_m": 40.0,
+      "expected_entry_confirmed": true,
+      "reason": "T+1 收盤 102 ≥ breakout_price 100，且成交量 40 ≤ 50×0.8=40，符合 spec.md 7.6.2。"
+    },
+    {
+      "name": "T+1跌破突破點",
+      "today_date": "2026-08-01",
+      "close": 98.5,
+      "volume_m": 35.0,
+      "expected_entry_confirmed": false,
+      "reason": "收盤 98.5 < breakout_price 100，不符合『不破突破點』條件。"
+    },
+    {
+      "name": "T+1未量縮",
+      "today_date": "2026-08-01",
+      "close": 103.0,
+      "volume_m": 45.0,
+      "expected_entry_confirmed": false,
+      "reason": "成交量 45 > 50×0.8=40，未達量縮條件。"
+    }
+  ]
+}

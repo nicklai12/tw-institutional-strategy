@@ -1,0 +1,11 @@
+{
+  "date": "2026-08-01",
+  "setup": "c",
+  "exit_signals": [
+    "E1 外資連續轉賣",
+    "E2 跌破整理區間下緣"
+  ],
+  "stoploss_triggered": false,
+  "stopprofit_reminder": false,
+  "pnl_pct": -1.02
+}

@@ -1,0 +1,492 @@
+{
+  "date": "2026-08-01",
+  "source": "simulated rolling + price data for Setup B oracle",
+  "stocks": [
+    {
+      "ticker": "B001",
+      "name": "SetupB-Pass",
+      "close": 105,
+      "ma20": 89.8,
+      "ma20_direction": "rising",
+      "avg_volume_20d_m": 50.5,
+      "trust_10d_net": 750,
+      "trust_10d_buy_days": 10,
+      "foreign_10d_net": 125,
+      "foreign_10d_direction": "neutral",
+      "close_vs_ma20": "above",
+      "breakout_price": 98,
+      "breakout_date": "2026-08-01",
+      "breakout_volume_m": 60,
+      "price_history": [
+        {
+          "date": "2026-07-13",
+          "close": 80,
+          "high": 80,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-14",
+          "close": 81,
+          "high": 81,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-15",
+          "close": 82,
+          "high": 82,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-16",
+          "close": 83,
+          "high": 83,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-17",
+          "close": 84,
+          "high": 84,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-18",
+          "close": 85,
+          "high": 85,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-19",
+          "close": 86,
+          "high": 86,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-20",
+          "close": 87,
+          "high": 87,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-21",
+          "close": 88,
+          "high": 88,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-22",
+          "close": 89,
+          "high": 89,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-23",
+          "close": 90,
+          "high": 90,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-24",
+          "close": 91,
+          "high": 91,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-25",
+          "close": 92,
+          "high": 92,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-26",
+          "close": 93,
+          "high": 93,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-27",
+          "close": 94,
+          "high": 94,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-28",
+          "close": 95,
+          "high": 95,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-29",
+          "close": 96,
+          "high": 96,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-30",
+          "close": 97,
+          "high": 97,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-31",
+          "close": 98,
+          "high": 98,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-08-01",
+          "close": 105,
+          "high": 105,
+          "volume_m": 60
+        }
+      ],
+      "trust_daily_10d": [
+        100,
+        120,
+        80,
+        90,
+        110,
+        70,
+        60,
+        50,
+        40,
+        30
+      ],
+      "foreign_daily_10d": [
+        50,
+        40,
+        30,
+        20,
+        10,
+        5,
+        0,
+        -5,
+        -10,
+        -15
+      ]
+    },
+    {
+      "ticker": "B002",
+      "name": "SetupB-TrustDaysLow",
+      "close": 105,
+      "ma20": 89.8,
+      "ma20_direction": "rising",
+      "avg_volume_20d_m": 50.5,
+      "trust_10d_net": 500,
+      "trust_10d_buy_days": 6,
+      "foreign_10d_net": 125,
+      "foreign_10d_direction": "neutral",
+      "close_vs_ma20": "above",
+      "breakout_price": 98,
+      "breakout_date": "2026-08-01",
+      "breakout_volume_m": 60,
+      "price_history": [
+        {
+          "date": "2026-07-13",
+          "close": 80,
+          "high": 80,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-14",
+          "close": 81,
+          "high": 81,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-15",
+          "close": 82,
+          "high": 82,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-16",
+          "close": 83,
+          "high": 83,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-17",
+          "close": 84,
+          "high": 84,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-18",
+          "close": 85,
+          "high": 85,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-19",
+          "close": 86,
+          "high": 86,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-20",
+          "close": 87,
+          "high": 87,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-21",
+          "close": 88,
+          "high": 88,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-22",
+          "close": 89,
+          "high": 89,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-23",
+          "close": 90,
+          "high": 90,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-24",
+          "close": 91,
+          "high": 91,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-25",
+          "close": 92,
+          "high": 92,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-26",
+          "close": 93,
+          "high": 93,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-27",
+          "close": 94,
+          "high": 94,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-28",
+          "close": 95,
+          "high": 95,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-29",
+          "close": 96,
+          "high": 96,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-30",
+          "close": 97,
+          "high": 97,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-07-31",
+          "close": 98,
+          "high": 98,
+          "volume_m": 50
+        },
+        {
+          "date": "2026-08-01",
+          "close": 105,
+          "high": 105,
+          "volume_m": 60
+        }
+      ],
+      "trust_daily_10d": [
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        -10,
+        -20,
+        -30,
+        -40
+      ],
+      "foreign_daily_10d": [
+        50,
+        40,
+        30,
+        20,
+        10,
+        5,
+        0,
+        -5,
+        -10,
+        -15
+      ]
+    },
+    {
+      "ticker": "B003",
+      "name": "SetupB-ForeignSell",
+      "close": 129,
+      "ma20": 105.25,
+      "ma20_direction": "rising",
+      "avg_volume_20d_m": 500.0,
+      "trust_10d_net": 1000,
+      "trust_10d_buy_days": 10,
+      "foreign_10d_net": -3000,
+      "foreign_10d_direction": "selling",
+      "close_vs_ma20": "above",
+      "breakout_price": 113,
+      "breakout_date": "2026-08-01",
+      "breakout_volume_m": 500,
+      "price_history": [
+        {
+          "date": "2026-07-13",
+          "close": 95,
+          "high": 95,
+          "volume_m": 500
+        },
+        {
+          "date": "2026-07-14",
+          "close": 96,
+          "high": 96,
+          "volume_m": 500
+        },
+        {
+          "date": "2026-07-15",
+          "close": 97,
+          "high": 97,
+          "volume_m": 500
+        },
+        {
+          "date": "2026-07-16",
+          "close": 98,
+          "high": 98,
+          "volume_m": 500
+        },
+        {
+          "date": "2026-07-17",
+          "close": 99,
+          "high": 99,
+          "volume_m": 500
+        },
+        {
+          "date": "2026-07-18",
+          "close": 100,
+          "high": 100,
+          "volume_m": 500
+        },
+        {
+          "date": "2026-07-19",
+          "close": 101,
+          "high": 101,
+          "volume_m": 500
+        },
+        {
+          "date": "2026-07-20",
+          "close": 102,
+          "high": 102,
+          "volume_m": 500
+        },
+        {
+          "date": "2026-07-21",
+          "close": 103,
+          "high": 103,
+          "volume_m": 500
+        },
+        {
+          "date": "2026-07-22",
+          "close": 104,
+          "high": 104,
+          "volume_m": 500
+        },
+        {
+          "date": "2026-07-23",
+          "close": 105,
+          "high": 105,
+          "volume_m": 500
+        },
+        {
+          "date": "2026-07-24",
+          "close": 106,
+          "high": 106,
+          "volume_m": 500
+        },
+        {
+          "date": "2026-07-25",
+          "close": 107,
+          "high": 107,
+          "volume_m": 500
+        },
+        {
+          "date": "2026-07-26",
+          "close": 108,
+          "high": 108,
+          "volume_m": 500
+        },
+        {
+          "date": "2026-07-27",
+          "close": 109,
+          "high": 109,
+          "volume_m": 500
+        },
+        {
+          "date": "2026-07-28",
+          "close": 110,
+          "high": 110,
+          "volume_m": 500
+        },
+        {
+          "date": "2026-07-29",
+          "close": 111,
+          "high": 111,
+          "volume_m": 500
+        },
+        {
+          "date": "2026-07-30",
+          "close": 112,
+          "high": 112,
+          "volume_m": 500
+        },
+        {
+          "date": "2026-07-31",
+          "close": 113,
+          "high": 113,
+          "volume_m": 500
+        },
+        {
+          "date": "2026-08-01",
+          "close": 129,
+          "high": 129,
+          "volume_m": 500
+        }
+      ],
+      "trust_daily_10d": [
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100
+      ],
+      "foreign_daily_10d": [
+        -300,
+        -300,
+        -300,
+        -300,
+        -300,
+        -300,
+        -300,
+        -300,
+        -300,
+        -300
+      ]
+    }
+  ]
+}
