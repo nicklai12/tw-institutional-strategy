@@ -9,6 +9,8 @@ on:
 jobs:
   audit:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
     if: |
       (github.event_name == 'issues' && contains(fromJSON('["screened", "signal-confirmed", "holding"]'), github.event.label.name)) ||
       (github.event_name == 'issue_comment' && github.event.comment.body == '/re-audit')
