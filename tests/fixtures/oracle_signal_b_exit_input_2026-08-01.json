@@ -1,0 +1,20 @@
+{
+  "date": "2026-08-01",
+  "setup": "b",
+  "entry_price": 90.0,
+  "close": 92.0,
+  "ma10": 95.0,
+  "recent_low_20d": 93.0,
+  "trust_net_last_2d": [
+    -50,
+    -80
+  ],
+  "expected_partial_signals": [
+    "E1 投信連續賣超（先出一半）"
+  ],
+  "expected_exit_signals": [
+    "E2 跌破 MA10/前低（全出）"
+  ],
+  "expected_stoploss_triggered": false,
+  "reason": "投信連續 2 日賣超，且收盤 92 < MA10 95 並 < recent_low_20d 93；pnl ≈ +2.22%，未觸及 -6% 停損。spec.md 7.7.2。"
+}

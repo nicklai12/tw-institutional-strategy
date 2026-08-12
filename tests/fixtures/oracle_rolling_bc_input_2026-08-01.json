@@ -1,0 +1,37 @@
+{
+  "fetch_date": "2026-08-01",
+  "fetch_timestamp": "2026-08-01T18:30:00",
+  "source_url": "https://www.twse.com.tw/rwd/zh/fund/T86?date=20260801&selectType=ALLBUT0999",
+  "record_count": 1,
+  "data": [
+    {
+      "ticker": "R001",
+      "name": "Rolling-Streak",
+      "foreign_buy": 0,
+      "foreign_sell": 0,
+      "foreign_net": 25,
+      "trust_buy": 0,
+      "trust_sell": 0,
+      "trust_net": 30,
+      "dealer_net": 0
+    }
+  ],
+  "daily_history": {
+    "R001": {
+      "foreign_net": [
+        -10,
+        -20,
+        5,
+        15,
+        25
+      ],
+      "trust_net": [
+        5,
+        -5,
+        10,
+        20,
+        30
+      ]
+    }
+  }
+}

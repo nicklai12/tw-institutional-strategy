@@ -1,0 +1,45 @@
+{
+  "date": "2026-08-01",
+  "setup_c_candidates": [
+    {
+      "ticker": "C001",
+      "name": "SetupC-Pass",
+      "screen_date": "2026-08-01",
+      "market_cap_b": 5000,
+      "foreign_20d_net": -1450,
+      "foreign_recent_3d": true,
+      "foreign_buy_streak_day": 3,
+      "price_bottom_status": "higher_lows",
+      "entry_day": 3,
+      "entry_zone": "外資連買第 3 天當日價格區間（由 signal monitor 於進場日動態確認）",
+      "stop_loss_price": 95,
+      "position_size_lots": "待人工填寫",
+      "risk_r_pct": "待人工填寫",
+      "artifact_run_id": "12345",
+      "should_include": true,
+      "reason": "市值 5000 億 ≥ 門檻 1000 億；外資 20 日淨值為負（-1450）；近 3 日外資連買；低點墊高；符合 Setup C 篩選條件（spec.md 3.3）。"
+    }
+  ],
+  "excluded": [
+    {
+      "ticker": "C002",
+      "name": "SetupC-Foreign20dPositive",
+      "should_include": false,
+      "reason": "外資 20 日淨值為正（1000），不符合 Setup C『外資近 20 日合計為負』條件（spec.md 3.3）。"
+    },
+    {
+      "ticker": "C003",
+      "name": "SetupC-Recent3dNotBuy",
+      "should_include": false,
+      "reason": "外資最近 3 日未連續買超（最後一日轉賣），不符合 Setup C『最近 3 日外資轉為連買』條件（spec.md 3.3）。"
+    },
+    {
+      "ticker": "C004",
+      "name": "SetupC-MarketCapLow",
+      "should_include": false,
+      "reason": "市值 500 億 < 門檻 1000 億，不符合 Setup C『市值大、流動性強的權值/產業龍頭』條件（spec.md 3.3、README 護欄規則）。"
+    }
+  ],
+  "manually_verified_by": "PENDING",
+  "verified_at": null
+}

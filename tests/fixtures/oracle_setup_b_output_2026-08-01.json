@@ -1,0 +1,41 @@
+{
+  "date": "2026-08-01",
+  "setup_b_candidates": [
+    {
+      "ticker": "B001",
+      "name": "SetupB-Pass",
+      "screen_date": "2026-08-01",
+      "avg_volume_20d_m": 50.5,
+      "trust_10d_net": 750,
+      "trust_10d_buy_days": 10,
+      "foreign_10d_direction": "neutral",
+      "close_vs_ma20": "above",
+      "breakout_price": 98,
+      "breakout_date": "2026-08-01",
+      "breakout_volume_m": 60,
+      "entry_zone": "突破價 98.00 之上且量縮",
+      "stop_loss_price": 99,
+      "position_size_lots": "待人工填寫",
+      "risk_r_pct": "待人工填寫",
+      "artifact_run_id": "12345",
+      "should_include": true,
+      "reason": "投信 10 日淨買超為正且買超天數 10 ≥ 7；外資 10 日方向為 neutral，非明顯大賣；股價站上 MA20；突破日成交量未失控爆量。"
+    }
+  ],
+  "excluded": [
+    {
+      "ticker": "B002",
+      "name": "SetupB-TrustDaysLow",
+      "should_include": false,
+      "reason": "投信 10 日買超天數 6 < 7，不符合 Setup B 篩選條件（spec.md 3.2、7.8）。"
+    },
+    {
+      "ticker": "B003",
+      "name": "SetupB-ForeignSell",
+      "should_include": false,
+      "reason": "外資 10 日方向為 selling（ratio ≈ -6.6% < -5%），屬明顯大賣，不符合 Setup B 篩選條件（spec.md 3.2、7.8）。"
+    }
+  ],
+  "manually_verified_by": "PENDING",
+  "verified_at": null
+}
