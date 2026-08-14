@@ -5,6 +5,11 @@ on:
     workflows: ["30 Signal Monitor"]
     types: [completed]
   workflow_dispatch:
+    inputs:
+      monitor_run_id:
+        description: "Signal Monitor run ID to process"
+        required: true
+        type: string
 
 jobs:
   guardrail:
@@ -18,8 +23,9 @@ jobs:
       actions: write
       issues: write
     if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      needs.guardrail.outputs.passed == 'true'
+      needs.guardrail.outputs.passed == 'true' &&
+      (github.event_name == 'workflow_dispatch' ||
+       github.event.workflow_run.conclusion == 'success')
 
     steps:
       - name: Checkout repository
@@ -33,7 +39,7 @@ jobs:
       - name: Run Exit Checker
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MONITOR_RUN_ID: ${{ github.event.workflow_run.id }}
+          MONITOR_RUN_ID: ${{ github.event.inputs.monitor_run_id || github.event.workflow_run.id }}
         run: |
           python scripts/exit-checker/exit_checker.py
 
