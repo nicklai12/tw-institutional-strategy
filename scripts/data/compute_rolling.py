@@ -1,6 +1,5 @@
 """Compute rolling institutional metrics from recent raw data files."""
 
-import datetime
 import glob
 import json
 import os
@@ -128,8 +127,8 @@ def main() -> int:
         return 1
 
     os.makedirs(_ROLLING_DIR, exist_ok=True)
-    today_compact = datetime.date.today().strftime("%Y%m%d")
-    output_path = os.path.join(_ROLLING_DIR, f"{today_compact}_rolling.json")
+    latest_compact = result["fetch_date"].replace("-", "")
+    output_path = os.path.join(_ROLLING_DIR, f"{latest_compact}_rolling.json")
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2)
 

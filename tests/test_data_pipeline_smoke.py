@@ -32,9 +32,9 @@ def test_full_pipeline_smoke(
         partial(rolling_module.compute_rolling, raw_dir=str(raw_dir)),
     )
 
-    with patch_module_today(fetch_module, TEST_DATE_MONDAY), patch_module_today(
-        rolling_module, TEST_DATE_MONDAY
-    ), patch.object(fetch_module.requests, "get", make_mock_get()):
+    with patch_module_today(fetch_module, TEST_DATE_MONDAY), patch.object(
+        fetch_module.requests, "get", make_mock_get()
+    ):
         fetch_exit = fetch_module.main(backfill_days=20)
         assert fetch_exit == 0
 
@@ -50,6 +50,8 @@ def test_full_pipeline_smoke(
     with open(rolling_files[0], encoding="utf-8") as f:
         result = json.load(f)
     assert result["days_used"] == 20
+    assert os.path.basename(rolling_files[0]) == "20260803_rolling.json"
+    assert result["fetch_date"] == "2026-08-03"
 
     captured = capsys.readouterr()
     assert "WARNING: 原始檔案不足" not in captured.out
