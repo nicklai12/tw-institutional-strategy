@@ -4,6 +4,7 @@ on:
   workflow_run:
     workflows: ["30 Signal Monitor"]
     types: [completed]
+  workflow_dispatch:
 
 jobs:
   guardrail:
