@@ -175,7 +175,7 @@ graph TD
 ```
 00-data-fetch.yml
     ├── (首次) 補抓 25 個交易日
-    ├── (非首次) 還原前一次 institutional-data-{run_id} artifact
+    ├── (非首次) 下載前一次 institutional-data-{run_id} named-artifact 到 data/
     └── 產生並上傳 institutional-data-{run_id}
         ├── data/raw/YYYYMMDD.json
         └── data/rolling/YYYYMMDD_rolling.json
