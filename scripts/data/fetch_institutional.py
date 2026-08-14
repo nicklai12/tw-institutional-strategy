@@ -2,6 +2,7 @@
 
 import argparse
 import datetime
+import glob
 import json
 import os
 import sys
@@ -15,6 +16,7 @@ _SELECT_TYPE = "ALLBUT0999"
 _RAW_OUTPUT_DIR = "data/raw"
 _MIN_RECORD_COUNT = 100
 _API_TIMEOUT_SECONDS = 10
+_MAX_RAW_AGE_DAYS = 7
 
 # Field names observed in the TWSE T86 response for selectType=ALLBUT0999.
 _FIELD_TICKER = "證券代號"
@@ -180,6 +182,36 @@ def _write_raw_file(date: datetime.date, result: dict[str, Any]) -> str:
     return output_path
 
 
+def _latest_raw_date(raw_dir: str) -> datetime.date | None:
+    """Return the latest trading date found in raw_dir/*.json, or None."""
+    latest: datetime.date | None = None
+    for path in glob.glob(os.path.join(raw_dir, "*.json")):
+        basename = os.path.basename(path)
+        date_part = basename.replace(".json", "")
+        if len(date_part) != 8 or not date_part.isdigit():
+            continue
+        d = datetime.datetime.strptime(date_part, "%Y%m%d").date()
+        if latest is None or d > latest:
+            latest = d
+    return latest
+
+
+def _ensure_data_fresh(today: datetime.date, raw_dir: str) -> bool:
+    """Fail if the latest raw file is older than _MAX_RAW_AGE_DAYS from today."""
+    latest = _latest_raw_date(raw_dir)
+    if latest is None:
+        print("ERROR: 找不到任何原始資料")
+        return False
+    age_days = (today - latest).days
+    if age_days > _MAX_RAW_AGE_DAYS:
+        print(
+            f"ERROR: 資料過舊，最新原始日期為 {latest.isoformat()}（距今 {age_days} 天，"
+            f"超過 {_MAX_RAW_AGE_DAYS} 天）"
+        )
+        return False
+    return True
+
+
 def _backfill_trading_days(backfill_days: int, today: datetime.date) -> int:
     """Fetch up to backfill_days recent trading days, skipping existing files.
 
@@ -192,19 +224,25 @@ def _backfill_trading_days(backfill_days: int, today: datetime.date) -> int:
     success_count = 0
     skipped_count = 0
     skipped_invalid_count = 0
+    attempted_count = 0
+    filled_count = 0
     candidate = today
+    # Allow extra headroom for API failures / holidays without looping forever.
+    max_attempts = backfill_days * 3
 
-    while success_count + skipped_count < backfill_days:
+    while filled_count < backfill_days and attempted_count < max_attempts:
         if not is_trading_day(candidate):
             candidate -= datetime.timedelta(days=1)
             continue
 
+        attempted_count += 1
         compact = _compact_date(candidate)
         output_path = os.path.join(_RAW_OUTPUT_DIR, f"{compact}.json")
 
         if os.path.exists(output_path):
             print(f"SKIP: {compact} 已存在")
             skipped_count += 1
+            filled_count += 1
             candidate -= datetime.timedelta(days=1)
             continue
 
@@ -224,6 +262,7 @@ def _backfill_trading_days(backfill_days: int, today: datetime.date) -> int:
             f"已寫入 {output_path}"
         )
         success_count += 1
+        filled_count += 1
         candidate -= datetime.timedelta(days=1)
 
     print(
@@ -238,10 +277,17 @@ def main(backfill_days: int = 0) -> int:
     today = datetime.date.today()
 
     if backfill_days > 0:
-        return _backfill_trading_days(backfill_days, today)
+        rc = _backfill_trading_days(backfill_days, today)
+        if rc != 0:
+            return rc
+        if not _ensure_data_fresh(today, _RAW_OUTPUT_DIR):
+            return 1
+        return 0
 
     if not is_trading_day(today):
         print("SKIP: 今日非交易日")
+        if not _ensure_data_fresh(today, _RAW_OUTPUT_DIR):
+            return 1
         return 0
 
     try:
@@ -264,6 +310,8 @@ def main(backfill_days: int = 0) -> int:
         f"OK: {result['fetch_date']} 共 {result['record_count']} 筆，"
         f"已寫入 {output_path}"
     )
+    if not _ensure_data_fresh(today, _RAW_OUTPUT_DIR):
+        return 1
     return 0
 
 

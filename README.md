@@ -79,7 +79,7 @@ tests/
 
 | Workflow | 觸發時機 | 用途 |
 |---|---|---|
-| `00-data-fetch.yml` | 每個交易日收盤後（約 18:30 台灣時間）透過 `schedule` 觸發 | 還原前次成功的 `institutional-data` artifact；首次執行補抓 25 個交易日，之後只抓當日；執行 `scripts/data/` 產生 `data/raw/` 與 `data/rolling/`；即使 fetch 因跳過日期而 exit 1，仍透過 `if: always()` 上傳 artifact |
+| `00-data-fetch.yml` | 每個交易日收盤後（約 18:30 台灣時間）透過 `schedule` 觸發 | 透過 named-artifact 還原前次成功的 `institutional-data` artifact 到 `data/`；首次執行補抓 25 個交易日，之後只抓當日；執行 `scripts/data/` 產生 `data/raw/` 與 `data/rolling/`；若當日資料無法取得或最新 raw 資料已超過 7 天，fetch 會 exit 1，但仍透過 `if: always()` 上傳 artifact |
 | `10-screener-setup-a.yml` | 【異動】`00-data-fetch.yml` 完成後 `workflow_run` 觸發，僅當 upstream conclusion 為 `success` 時執行 | 執行 `scripts/screener/` 產生 Setup A 候選股 Issue（labels: `setup-a`, `screened`）。原本接在 `20-manager-loop.yml` 之後，現改為緊接資料抓取完成後執行，讓候選股能在同一天進入風險評估 |
 | `20-manager-loop.yml` | 【異動】`10-screener-setup-a.yml` 完成後 `workflow_run` 觸發，當 upstream conclusion 為 `success` 或 `failure` 時執行（排除 `cancelled`） | 執行 `scripts/manager/` 檢查大盤與持倉上限護欄，對當日新建的 `screened` Issue 標記 `auto-ok` / `human-review` / `guardrail-blocked` |
 | `30-signal-monitor.yml` | `20-manager-loop.yml` 成功後 `workflow_run` 觸發 | 【新增職責】掃描 `auto-ok` Issue，判斷價格是否回落至 `entry_zone`，符合則標記 `signal-confirmed`；【既有職責】掃描 `holding` Issue 檢查出場條件，產生 monitor report |

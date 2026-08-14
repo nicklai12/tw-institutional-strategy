@@ -54,7 +54,9 @@ jobs:
 
           echo "Found previous successful run: $PREVIOUS_RUN_ID"
           set +e
-          gh run download "$PREVIOUS_RUN_ID" --dir /tmp/previous-artifact
+          gh run download "$PREVIOUS_RUN_ID" \
+            --name "institutional-data-${PREVIOUS_RUN_ID}" \
+            --dir data/
           DOWNLOAD_EXIT=$?
           set -e
 
@@ -64,16 +66,13 @@ jobs:
             exit 0
           fi
 
-          ARTIFACT_DIR=$(find /tmp/previous-artifact -maxdepth 1 -type d -name 'institutional-data-*' | head -n 1)
-          if [ -d "${ARTIFACT_DIR}/data" ]; then
-            mkdir -p data
-            cp -r "${ARTIFACT_DIR}/data/." data/
+          if [ -d "data/raw" ]; then
             RESTORED_COUNT=$(find data/raw -name '*.json' 2>/dev/null | wc -l)
             echo "first_run=false" >> "$GITHUB_OUTPUT"
             echo "Restored ${RESTORED_COUNT} raw files from previous artifact (run ${PREVIOUS_RUN_ID})"
           else
             echo "first_run=true" >> "$GITHUB_OUTPUT"
-            echo "Previous artifact does not contain expected data/ directory"
+            echo "Previous artifact does not contain expected data/raw directory"
           fi
 
       - name: Step 2 - Fetch institutional data

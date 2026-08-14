@@ -168,7 +168,7 @@
 
 | Workflow | Artifact 名稱 | 內容路徑 |
 |---|---|---|
-| `00-data-fetch.yml` | `institutional-data-{run_id}` | `data/raw/YYYYMMDD.json`、 `data/rolling/YYYYMMDD_rolling.json` |
+| `00-data-fetch.yml` | `institutional-data-{run_id}` | `data/raw/YYYYMMDD.json`、 `data/rolling/YYYYMMDD_rolling.json`（rolling 檔名的 `YYYYMMDD` 與 raw 資料最新日期一致） |
 | `10-screener-setup-a.yml` | `screener-a-{run_id}` | `data/screener/screener_result_a_YYYYMMDD.json` |
 | `20-manager-loop.yml` | `manager-report-{run_id}` | `data/manager/manager_report_YYYYMMDD.json` |
 | `30-signal-monitor.yml` | `monitor-report-{run_id}` | `data/monitor/monitor_report_YYYYMMDD.json` |
@@ -402,7 +402,7 @@
 
 | Workflow | 觸發條件 | 說明 |
 |---|---|---|
-| `00-data-fetch.yml` | `schedule` | 每個交易日收盤後約 18:30 TW；首次執行補抓 25 日，之後還原前次 artifact 並只抓當日；fetch 因跳過日期 exit 1 時仍上傳 artifact（if: always()） |
+| `00-data-fetch.yml` | `schedule` | 每個交易日收盤後約 18:30 TW；首次執行補抓 25 日，之後透過 named-artifact 還原前次 artifact 到 `data/` 並只抓當日；若當日資料無法取得或最新 raw 資料已超過 7 天，fetch 會 exit 1，但仍透過 `if: always()` 上傳 artifact |
 | `10-screener-setup-a.yml` | `workflow_run` | `00-data-fetch.yml` 完成後執行（僅 conclusion == 'success'） |
 | `11-screener-setup-b.yml` | `workflow_run` | `00-data-fetch.yml` 完成後執行（僅 conclusion == 'success'） |
 | `12-screener-setup-c.yml` | `workflow_run` | `00-data-fetch.yml` 完成後執行（僅 conclusion == 'success'） |

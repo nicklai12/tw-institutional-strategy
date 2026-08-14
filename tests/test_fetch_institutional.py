@@ -2,13 +2,28 @@
 
 import json
 import os
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
-from tests.conftest import TEST_DATE_MONDAY, make_mock_get
+from requests import HTTPError
+
+from tests.conftest import TEST_DATE_MONDAY, make_mock_get, make_twse_response
 
 
 def _raw_files(raw_dir: str) -> list[str]:
     return sorted(f for f in os.listdir(raw_dir) if f.endswith(".json"))
+
+
+def _make_api_always_fail():
+    """Return a mock requests.get that always raises HTTPError."""
+
+    def _get(url, *args, **kwargs):
+        mock = MagicMock()
+        mock.raise_for_status.side_effect = HTTPError(
+            f"Mock API failure for {url}"
+        )
+        return mock
+
+    return _get
 
 
 def test_fetch_single_day(fetch_module, tmp_path, monkeypatch, patch_module_today):
@@ -156,3 +171,44 @@ def test_backfill_continues_after_skip_and_returns_exit_code_0(
 
     assert exit_code == 0
     assert _raw_files(str(raw_dir)) == ["20260730.json", "20260731.json"]
+
+
+def test_backfill_fails_when_all_api_calls_fail(
+    fetch_module, tmp_path, monkeypatch, patch_module_today
+):
+    """If every backfill day fails to fetch, the run must exit 1."""
+    raw_dir = tmp_path / "raw"
+    monkeypatch.setattr(fetch_module, "_RAW_OUTPUT_DIR", str(raw_dir))
+
+    with patch_module_today(fetch_module, TEST_DATE_MONDAY), patch.object(
+        fetch_module.requests, "get", _make_api_always_fail()
+    ):
+        exit_code = fetch_module.main(backfill_days=5)
+
+    assert exit_code == 1
+
+
+def test_backfill_fails_when_existing_data_is_stale(
+    fetch_module, tmp_path, monkeypatch, patch_module_today
+):
+    """If existing raw data is older than the freshness threshold, exit 1."""
+    raw_dir = tmp_path / "raw"
+    monkeypatch.setattr(fetch_module, "_RAW_OUTPUT_DIR", str(raw_dir))
+
+    stale_payload = fetch_module.parse_institutional_response(
+        make_twse_response(),
+        fetch_date="2026-07-20",
+        source_url="http://example.com",
+        fetch_timestamp="2026-07-20T00:00:00",
+    )
+    os.makedirs(raw_dir, exist_ok=True)
+    (raw_dir / "20260720.json").write_text(
+        json.dumps(stale_payload), encoding="utf-8"
+    )
+
+    with patch_module_today(fetch_module, TEST_DATE_MONDAY), patch.object(
+        fetch_module.requests, "get", _make_api_always_fail()
+    ):
+        exit_code = fetch_module.main(backfill_days=5)
+
+    assert exit_code == 1

@@ -1,7 +1,10 @@
 """Tests for scripts/data/compute_rolling.py rolling-window behavior."""
 
 import datetime
+import json
 import os
+from functools import partial
+from unittest.mock import patch
 
 import pytest
 
@@ -116,3 +119,33 @@ def test_compute_no_raw_files_raises(rolling_module, tmp_path, monkeypatch):
 
     with pytest.raises(Exception):
         rolling_module.compute_rolling(str(raw_dir))
+
+
+def test_rolling_filename_matches_latest_raw_date(
+    rolling_module, tmp_path, monkeypatch, patch_module_today
+):
+    """Rolling output file is named after the latest raw date, not runner today."""
+    raw_dir = tmp_path / "raw"
+    rolling_dir = tmp_path / "rolling"
+    monkeypatch.setattr(rolling_module, "_RAW_DIR", str(raw_dir))
+    monkeypatch.setattr(rolling_module, "_ROLLING_DIR", str(rolling_dir))
+
+    dates = _date_str_sequence(datetime.date(2026, 7, 1), 20)
+    _write_raw_sequence(str(raw_dir), dates)
+
+    # main() calls compute_rolling() with no args, so wrap it to use our temp raw_dir.
+    monkeypatch.setattr(
+        rolling_module,
+        "compute_rolling",
+        partial(rolling_module.compute_rolling, raw_dir=str(raw_dir)),
+    )
+
+    # main() no longer uses runner today for the filename; it uses the latest
+    # raw date, so patching datetime is unnecessary.
+    exit_code = rolling_module.main()
+
+    assert exit_code == 0
+    expected_path = rolling_dir / "20260720_rolling.json"
+    assert expected_path.exists()
+    payload = json.loads(expected_path.read_text(encoding="utf-8"))
+    assert payload["fetch_date"] == "2026-07-20"
