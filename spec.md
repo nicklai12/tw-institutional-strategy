@@ -408,7 +408,7 @@
 | `12-screener-setup-c.yml` | `workflow_run` | `00-data-fetch.yml` 完成後執行（僅 conclusion == 'success'） |
 | `20-manager-loop.yml` | `workflow_run` | `10-screener-setup-a.yml`、`11-screener-setup-b.yml`、`12-screener-setup-c.yml` 完成後，且 conclusion 為 success 或 failure 時執行（排除 cancelled） |
 | `30-signal-monitor.yml` | `workflow_run` | `20-manager-loop.yml` 成功後（進場訊號判斷 + 出場訊號判斷） |
-| `40-exit-checker.yml` | `workflow_run` | `30-signal-monitor.yml` 成功後（不變） |
+| `40-exit-checker.yml` | `workflow_run` / `workflow_dispatch` | `30-signal-monitor.yml` 成功後自動執行；或手動觸發並輸入該 monitor run 的 ID |
 | `50-audit-check.yml` | `issues` / `issue_comment` | Issue 被標記 `screened`/`signal-confirmed`/`holding`，或留言 `/re-audit`。**注意**：`signal-confirmed` 事件在本次調整後才會被實際觸發 |
 | `60-performance-report.yml` | `schedule` / `workflow_dispatch` | 每週五台灣時間 18:30，或可手動觸發 |
 | `99-guardrail-check.yml` | `workflow_call` | 被其他 workflow 呼叫 |

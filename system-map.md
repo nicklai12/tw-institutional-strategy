@@ -112,7 +112,7 @@ graph TD
 | `12-screener-setup-c.yml` | `workflow_run` 於 `00-data-fetch.yml` 完成後 | 執行 Setup C screener 並建立 Issues（labels: `setup-c`, `screened`） |
 | `20-manager-loop.yml` | `workflow_run` 於 `10-screener-setup-a.yml`、`11-screener-setup-b.yml`、`12-screener-setup-c.yml` 完成後 | 當 upstream conclusion 為 success 或 failure 時執行；排除 cancelled。掃描當日所有 `screened` Issue，評估大盤/持倉風險，標記 `auto-ok` / `human-review` / `guardrail-blocked` |
 | `30-signal-monitor.yml` | `workflow_run` 於 `20-manager-loop.yml` 完成後 | 掃描 `auto-ok` Issue 計算進場訊號，符合則標記 `signal-confirmed`；掃描 `holding` Issue 計算出場訊號，產生 monitor report |
-| `40-exit-checker.yml` | `workflow_run` 於 `30-signal-monitor.yml` 成功後 | 讀取 monitor report，對觸發出場/停損的 holding Issue 操作 Label，並上傳 exit-checker-report artifact |
+| `40-exit-checker.yml` | `workflow_run` 於 `30-signal-monitor.yml` 成功後；也支援 `workflow_dispatch` 手動補執行 | 讀取 monitor report，對觸發出場/停損的 holding Issue 操作 Label，並上傳 exit-checker-report artifact |
 | `50-audit-check.yml` | Issue 建立/Label 變更、`/re-audit` 留言 | 執行 audit。**注意**：`signal-confirmed` 事件在本次調整後才會被實際觸發（先前無程式碼會標記此 label） |
 | `60-performance-report.yml` | `schedule` 每週五 18:30 TW、`workflow_dispatch` | 產生報告並部署到 gh-pages |
 | `99-guardrail-check.yml` | `workflow_call` | 被其他 workflow 呼叫，執行前置檢查 |
