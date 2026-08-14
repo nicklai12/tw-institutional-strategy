@@ -83,14 +83,31 @@ tests/
 | `10-screener-setup-a.yml` | 【異動】`00-data-fetch.yml` 完成後 `workflow_run` 觸發，僅當 upstream conclusion 為 `success` 時執行 | 執行 `scripts/screener/` 產生 Setup A 候選股 Issue（labels: `setup-a`, `screened`）。原本接在 `20-manager-loop.yml` 之後，現改為緊接資料抓取完成後執行，讓候選股能在同一天進入風險評估 |
 | `20-manager-loop.yml` | 【異動】`10-screener-setup-a.yml` 完成後 `workflow_run` 觸發，當 upstream conclusion 為 `success` 或 `failure` 時執行（排除 `cancelled`） | 執行 `scripts/manager/` 檢查大盤與持倉上限護欄，對當日新建的 `screened` Issue 標記 `auto-ok` / `human-review` / `guardrail-blocked` |
 | `30-signal-monitor.yml` | `20-manager-loop.yml` 成功後 `workflow_run` 觸發 | 【新增職責】掃描 `auto-ok` Issue，判斷價格是否回落至 `entry_zone`，符合則標記 `signal-confirmed`；【既有職責】掃描 `holding` Issue 檢查出場條件，產生 monitor report |
-| `40-exit-checker.yml` | `30-signal-monitor.yml` 成功後 `workflow_run` 觸發 | 讀取 monitor report，對觸發出場/停損條件的 `holding` Issue 標記 `exit-triggered`（並視情況加上 `result-stoploss-hit`），移除 `holding` |
+| `40-exit-checker.yml` | `30-signal-monitor.yml` 成功後 `workflow_run` 觸發；或 `workflow_dispatch` 手動觸發 | 讀取 monitor report，對觸發出場/停損條件的 `holding` Issue 標記 `exit-triggered`（並視情況加上 `result-stoploss-hit`），移除 `holding`。手動觸發時需輸入 upstream `30-signal-monitor` 的 run ID |
 | `50-audit-check.yml` | Issue 建立、新增 `screened`/`signal-confirmed`/`holding` Label，或留言 `/re-audit` 時觸發 | 執行 `scripts/audit/` 檢查欄位與護欄。**注意**：本次調整後，`signal-confirmed` 事件才會由 `30-signal-monitor.yml` 實際觸發（先前無任何腳本會標記此 label） |
 | `60-performance-report.yml` | 每週五台灣時間 18:30 透過 `schedule` 觸發，或 `workflow_dispatch` 手動觸發 | 執行 `scripts/report/generate_report.py` 並部署到 GitHub Pages |
 | `99-guardrail-check.yml` | 被其他 workflow 以 `workflow_call` 呼叫 | 執行 `scripts/guardrail/pre_run_check.py` 檢查資料與環境 |
 
----
+### 如何查詢 Workflow Run ID
 
-## 護欄規則清單
+手動觸發 `40-exit-checker.yml` 時，需要輸入 upstream `30-signal-monitor.yml` 的 run ID。
+
+**方法 1：從 GitHub Actions 頁面 URL 取得**
+
+進入該 workflow run 的頁面，URL 最後一組數字即為 run ID：
+
+```text
+https://github.com/nicklai12/tw-institutional-strategy/actions/runs/31809342266
+                                                            ^^^^^^^^^^^^^^^^
+                                                            run ID
+```
+
+**方法 2：使用 GitHub CLI**
+
+```bash
+gh run list --workflow=30-signal-monitor.yml --limit=1 --json databaseId
+```
+
 
 Audit Action 會對每個候選股 Issue 執行以下護欄檢查。未通過者將被標記為 `data-missing`（欄位/數值不符）或由 Manager Loop 標記為 `guardrail-blocked`（風控上限觸發）。
 
