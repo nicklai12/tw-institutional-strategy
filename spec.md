@@ -6,6 +6,30 @@
 
 ## 0. 版本異動說明
 
+> **本次更新（Setup B/C 規格鎖定修訂版）：**
+> 1. 依據目前實際程式碼重新核對後，修正先前規格書中「已實作」的誤述：
+>    - `scripts/data/compute_rolling.py` **目前尚未輸出** `foreign_buy_streak_day`，此欄位需要新增（見 5.7.1）。
+>    - `scripts/monitor/signal_monitor.py` 的**進場判斷**目前僅實作 Setup A（MA5~MA20，見 7.6.1）；Setup B（突破後量縮不破，見 7.6.2）與 Setup C（外資連買第 N 天，見 7.6.3）的進場判斷仍待實作。出場判斷已依 `setup_type` 分流，Setup A/B/C 規則均已存在（見 7.7）。
+>    - `scripts/manager/manager_loop.py` 對 `screened` Issue 以 label 掃描為主，**沒有日期或 run_id 去重機制**。若 `20-manager-loop.yml` 同時監聽 10/11/12 三個 workflow 的 `completed` 事件，每次觸發都會重新處理當日所有 `screened` Issue；label 操作本身冪等，但 guardrail 相關評論會重複留言（見 6 節與 7.9）。
+> 2. Issue body 欄位更新：Setup B 新增 `breakout_date`、`breakout_volume_m`（見 3.2）；Setup C 的 `foreign_buy_streak_day` 由 `compute_rolling.py` 新增輸出後，screener 寫入 Issue body 作為參考欄位（見 3.3）。
+> 3. Workflow 觸發鏈維持：在 `00-data-fetch.yml` 完成後並行觸發 `10-screener-setup-a.yml`、`11-screener-setup-b.yml`、`12-screener-setup-c.yml`；三個 screener 產生的 `screened` Issue 由同一個 `20-manager-loop.yml` 統一評估（見 6 節）。
+>
+> ⚠️ **本次 Setup B/C 規格鎖定仍有以下項目待人工確認（後附建議方案）：**
+> - `foreign_10d_direction` 判定「明顯大賣」的具體閾值。
+>   - **建議**：不由 `compute_rolling.py` 計算，改由 Setup B screener 使用股價/成交量資料計算：`foreign_avg_daily_net / avg_daily_volume_shares`，絕對值超過 `5%` 才判定為 buying / selling，否則 neutral；閾值設為 env var `FOREIGN_10D_DIRECTION_THRESHOLD`，預設 `0.05`。
+> - Setup B 量縮條件的成交金額比率閾值，以及「隔天/第三天」的確切天數定義。
+>   - **建議**：等待天數為突破日後第 1、2 個交易日（`trading_days_after_breakout ∈ {1, 2}`）；量縮條件為 `volume_today_m ≤ breakout_volume_m × 0.8`，比率設為 env var `SETUP_B_VOLUME_CONTRACTION_RATIO`，預設 `0.8`。
+> - Setup C 進場是以 Issue body 的 `entry_day` 單一固定日為準，還是第 2~4 天任一天均可進場。
+>   - **建議**：採用窗口制，monitor 在 `2 ≤ foreign_buy_streak_day ≤ 4` 任一天皆可確認進場；`entry_day` 保留為 screener 建議的首選日（資訊欄）。
+> - 停損觸發應以 Issue body 的 `stop_loss_price` 為準，還是沿用 `signal_monitor.py` 目前的 `setup_type` 百分比對照表。
+>   - **建議**：沿用百分比對照表（a: -7%、b: -6%、c: -5%），並以實際 `entry_price` 計算真實停損價；Issue body 的 `stop_loss_price` 僅作為 screener 階段參考。
+> - Setup C 的 `entry_zone` 在 screener 階段應如何預填。
+>   - **建議**：screener 預填描述文字「外資連買第 N 天當日價格區間（由 signal monitor 於進場日動態確認）」，monitor 於進場日在留言中補上 `[today_low, today_high]`。
+> - `20-manager-loop.yml` 同時監聽 10/11/12 三個 workflow 時，重複觸發導致重複評論的問題應如何解決。
+>   - **建議**：在 `manager_loop.py` 中，對已標記 `auto-ok` / `human-review` / `guardrail-blocked` 的 Issue 不再重複留言；或改為 20-manager-loop 只由一個 workflow（例如 10-screener-setup-a）觸發，並在該 workflow 中等待 11/12 完成。兩種方案均需人工決定。
+>
+> ---
+
 > 本次更新配合 `system-map.md` 的流程調整：Workflow 觸發鏈重排、`30-signal-monitor` 新增進場訊號判斷職責。受影響章節：**第 1.5 節**（Label 使用約定）、**第 5.3 節**（Monitor Report Schema）、**第 6 節**（Workflow 觸發條件）、**第 7 節**（新增 7.6 進場訊號判斷規則）。其餘章節未變動。
 >
 > ⚠️ 本次更新中，`signal-confirmed` 標記時是否移除 `screened`/`auto-ok`、以及 `entry_zone` 的資料來源，屬於**尚待確認的假設**，詳見 `system-map.md` 第 0 節。
@@ -381,8 +405,7 @@
       "trust_10d_buy_days": 7,
       "foreign_10d_net": 5000,
       "foreign_20d_net": 10000,
-      "foreign_recent_3d_all_buy": true,
-      "foreign_buy_streak_day": 3
+      "foreign_recent_3d_all_buy": true
     }
   ]
 }
@@ -390,9 +413,9 @@
 
 #### 5.7.1 Setup B/C 新增欄位說明
 
-| 欄位 | 計算公式 | 用途 |
-|---|---|---|
-| `foreign_buy_streak_day` | 從最新交易日往前數，連續 `foreign_net > 0` 的天數；遇到 `foreign_net ≤ 0` 即中斷 | Setup C screener 決定建議 `entry_day`，以及 monitor 判斷進場日 |
+| 欄位 | 計算公式 | 用途 | 目前狀態 |
+|---|---|---|---|
+| `foreign_buy_streak_day` | 從最新交易日往前數，連續 `foreign_net > 0` 的天數；遇到 `foreign_net ≤ 0` 即中斷 | Setup C screener 決定建議 `entry_day`，以及 monitor 判斷進場日 | **尚未實作**，需新增至 `compute_rolling.py` |
 
 `foreign_10d_direction`（Setup B）**不寫入 rolling**，改由 Setup B screener 在取得股價與成交量後計算（見 7.8），避免在缺少成交量的 rolling 資料中做不合理的絕對閾值判斷。
 
@@ -406,7 +429,7 @@
 | `10-screener-setup-a.yml` | `workflow_run` | `00-data-fetch.yml` 完成後執行（僅 conclusion == 'success'） |
 | `11-screener-setup-b.yml` | `workflow_run` | `00-data-fetch.yml` 完成後執行（僅 conclusion == 'success'） |
 | `12-screener-setup-c.yml` | `workflow_run` | `00-data-fetch.yml` 完成後執行（僅 conclusion == 'success'） |
-| `20-manager-loop.yml` | `workflow_run` | `10-screener-setup-a.yml`、`11-screener-setup-b.yml`、`12-screener-setup-c.yml` 完成後，且 conclusion 為 success 或 failure 時執行（排除 cancelled） |
+| `20-manager-loop.yml` | `workflow_run` | `10-screener-setup-a.yml`、`11-screener-setup-b.yml`、`12-screener-setup-c.yml` 完成後，且 conclusion 為 success 或 failure 時執行（排除 cancelled）。⚠️ 目前 `manager_loop.py` 對 `screened` Issue 無日期/run_id 去重，同時監聽 10/11/12 會導致多次觸發，實作時需補上去重或調整觸發策略（見 7.9）。 |
 | `30-signal-monitor.yml` | `workflow_run` | `20-manager-loop.yml` 成功後（進場訊號判斷 + 出場訊號判斷） |
 | `40-exit-checker.yml` | `workflow_run` / `workflow_dispatch` | `30-signal-monitor.yml` 成功後自動執行；或手動觸發並輸入該 monitor run 的 ID |
 | `50-audit-check.yml` | `issues` / `issue_comment` | Issue 被標記 `screened`/`signal-confirmed`/`holding`，或留言 `/re-audit`。**注意**：`signal-confirmed` 事件在本次調整後才會被實際觸發 |
@@ -450,6 +473,8 @@ days_held = report_date - entry_date（日曆天數）
 ### 7.6 進場訊號判斷規則
 
 Signal Monitor 對 `auto-ok` Issue 每日判斷是否進場。各 Setup 規則如下：
+
+**⚠️ 目前實作狀態**：`scripts/monitor/signal_monitor.py` 的 `check_entry_signal()` 目前僅實作 Setup A 的 MA5~MA20 判斷；Setup B 與 Setup C 的進場判斷規則已定義如下，但尚未實作。
 
 #### 7.6.1 Setup A
 
@@ -552,6 +577,19 @@ FOREIGN_10D_DIRECTION_THRESHOLD = 0.05（建議預設值，可透過 env var 調
 - `avg_volume_20d_m` 與 `close` 由股價 API 取得（單位：百萬台幣）。
 - `foreign_10d_net` 來自 `data/rolling` 或當日 raw data 的 10 日累加。
 - 此欄位寫入 Issue body，供 Audit 與後續追蹤使用。
+
+### 7.9 Manager Loop 重複觸發與去重
+
+`scripts/manager/manager_loop.py` 目前掃描所有帶有 `screened` label 的 open Issue，沒有依 `screen_date` 或 `artifact_run_id` 過濾。當 `20-manager-loop.yml` 同時監聽 `10-screener-setup-a.yml`、`11-screener-setup-b.yml`、`12-screener-setup-c.yml` 三個 workflow 的 `completed` 事件時，同一個交易日可能觸發多次：
+
+- `auto-ok` / `human-review` label 透過 `gh issue edit --add-label` 再次添加時不會報錯，操作上冪等。
+- 但 `guardrail-blocked` 相關評論會因每次觸發都重新呼叫 `gh issue comment` 而**重複留言**。
+- 若持倉上限或大盤急跌條件持續成立，已標記的 Issue 仍會被重新處理。
+
+**建議實作方向（擇一，需人工決定）**：
+
+1. **在 `manager_loop.py` 中避開已標記 Issue**：在迴圈開始前，將已帶有 `auto-ok`、`human-review`、`guardrail-blocked` 的 Issue 從 `screened_issues` / `auto_ok_candidates` 中排除。
+2. **調整 workflow 觸發策略**：只由 `10-screener-setup-a.yml` 觸發 `20-manager-loop.yml`，並在 `10-screener-setup-a.yml` 中加入等待 `11/12` 完成的步驟（例如透過 `gh run watch`），確保三個 screener 都完成後只執行一次 Manager Loop。
 
 ---
 
