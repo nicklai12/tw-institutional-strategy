@@ -23,6 +23,53 @@ def _write_raw_sequence(raw_dir: str, dates: list[str]) -> None:
         write_raw_file(raw_dir, date_str, payload)
 
 
+def _write_rolling_oracle_raw_files(raw_dir: str, oracle_input: dict) -> list[str]:
+    """Materialize a rolling oracle fixture's ``daily_history`` into raw files.
+
+    The ``daily_history`` arrays are ordered oldest-to-newest, ending at
+    ``oracle_input["fetch_date"]``.  One raw file is written per calendar day.
+    """
+    latest_date = datetime.date.fromisoformat(oracle_input["fetch_date"])
+    history = oracle_input.get("daily_history", {})
+    if not history:
+        return []
+
+    sample_ticker = next(iter(history))
+    days = len(history[sample_ticker]["foreign_net"])
+    dates = [
+        (latest_date - datetime.timedelta(days=days - 1 - i)).isoformat()
+        for i in range(days)
+    ]
+    name_by_ticker = {r["ticker"]: r["name"] for r in oracle_input["data"]}
+
+    for idx, date_str in enumerate(dates):
+        payload = {
+            "fetch_date": date_str,
+            "fetch_timestamp": oracle_input.get(
+                "fetch_timestamp", "2026-01-01T00:00:00"
+            ),
+            "source_url": oracle_input.get("source_url", ""),
+            "record_count": len(history),
+            "data": [
+                {
+                    "ticker": ticker,
+                    "name": name_by_ticker.get(ticker, ticker),
+                    "foreign_buy": 0,
+                    "foreign_sell": 0,
+                    "foreign_net": vals["foreign_net"][idx],
+                    "trust_buy": 0,
+                    "trust_sell": 0,
+                    "trust_net": vals["trust_net"][idx],
+                    "dealer_net": 0,
+                }
+                for ticker, vals in history.items()
+            ],
+        }
+        write_raw_file(raw_dir, date_str, payload)
+
+    return dates
+
+
 def test_compute_with_exactly_20_days(rolling_module, tmp_path, monkeypatch):
     """With 20 raw files compute_rolling uses all 20 days."""
     raw_dir = tmp_path / "raw"
@@ -106,6 +153,7 @@ def test_compute_output_schema(rolling_module, tmp_path, monkeypatch):
         "foreign_10d_net",
         "foreign_20d_net",
         "foreign_recent_3d_all_buy",
+        "foreign_buy_streak_day",
     }
     for record in result["data"]:
         assert set(record.keys()) == required_record_keys
@@ -149,3 +197,35 @@ def test_rolling_filename_matches_latest_raw_date(
     assert expected_path.exists()
     payload = json.loads(expected_path.read_text(encoding="utf-8"))
     assert payload["fetch_date"] == "2026-07-20"
+
+
+@pytest.mark.parametrize(
+    "input_file,output_file",
+    [
+        (
+            "oracle_rolling_bc_input_2026-08-01.json",
+            "oracle_rolling_bc_output_2026-08-01.json",
+        ),
+        (
+            "oracle_rolling_bc_input_2026-08-02.json",
+            "oracle_rolling_bc_output_2026-08-02.json",
+        ),
+    ],
+)
+def test_rolling_bc_oracle(
+    rolling_module, tmp_path, monkeypatch, input_file, output_file
+):
+    """compute_rolling output matches the Setup B/C oracle fixtures exactly."""
+    raw_dir = tmp_path / "raw"
+    monkeypatch.setattr(rolling_module, "_RAW_DIR", str(raw_dir))
+
+    fixtures_dir = os.path.join(os.path.dirname(__file__), "fixtures")
+    with open(os.path.join(fixtures_dir, input_file), encoding="utf-8") as f:
+        oracle_input = json.load(f)
+    with open(os.path.join(fixtures_dir, output_file), encoding="utf-8") as f:
+        expected = json.load(f)
+
+    _write_rolling_oracle_raw_files(str(raw_dir), oracle_input)
+    result = rolling_module.compute_rolling(str(raw_dir))
+
+    assert result == expected

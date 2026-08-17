@@ -53,6 +53,17 @@ def _all_positive(records: list[dict[str, Any]], net_field: str) -> bool:
     return all(r.get(net_field, 0) > 0 for r in records)
 
 
+def _buy_streak_days(records: list[dict[str, Any]], net_field: str) -> int:
+    """Count consecutive positive net values ending at the most recent record."""
+    count = 0
+    for r in reversed(records):
+        if r.get(net_field, 0) > 0:
+            count += 1
+        else:
+            break
+    return count
+
+
 def compute_rolling(raw_dir: str = _RAW_DIR) -> dict[str, Any]:
     """Compute rolling metrics from the most recent raw files.
 
@@ -105,6 +116,9 @@ def compute_rolling(raw_dir: str = _RAW_DIR) -> dict[str, Any]:
             "foreign_10d_net": _sum_net(rec_10d, "foreign_net"),
             "foreign_20d_net": _sum_net(window_records(20), "foreign_net"),
             "foreign_recent_3d_all_buy": _all_positive(rec_3d, "foreign_net"),
+            "foreign_buy_streak_day": _buy_streak_days(
+                window_records(20), "foreign_net"
+            ),
         }
         rolling_data.append(rolling_record)
 

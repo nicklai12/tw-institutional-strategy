@@ -34,7 +34,7 @@
       "trust_sell": 0,
       "trust_net": 20,
       "dealer_net": 0,
-      "foreign_5d_net": 45,
+      "foreign_5d_net": 35,
       "trust_5d_net": 100,
       "trust_10d_net": 200,
       "trust_10d_buy_days": 10,
