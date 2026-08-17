@@ -9,7 +9,8 @@ from scripts.screener.setup_a import screen_setup_a
 
 
 def get_oracle_pairs():
-    inputs = sorted(glob.glob("tests/fixtures/oracle_input_*.json"))
+    """Collect Setup A oracle input/output fixture pairs."""
+    inputs = sorted(glob.glob("tests/fixtures/oracle_input_????-??-??.json"))
     pairs = []
     for inp in inputs:
         out = inp.replace("oracle_input_", "oracle_output_")
