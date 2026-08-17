@@ -1,0 +1,47 @@
+{
+  "date": "2026-08-02",
+  "setup": "c",
+  "entry_day": 3,
+  "cases": [
+    {
+      "name": "外資連買第2天",
+      "foreign_buy_streak_day": 2,
+      "today_low": 99,
+      "today_high": 101,
+      "close": 100,
+      "expected_entry_confirmed": true,
+      "expected_entry_zone": [99, 101],
+      "reason": "foreign_buy_streak_day = 2 落在 2–4 窗口，且 close > 0；entry_zone = [today_low, today_high]。spec.md 7.6.3。"
+    },
+    {
+      "name": "外資連買第4天",
+      "foreign_buy_streak_day": 4,
+      "today_low": 98,
+      "today_high": 102,
+      "close": 100,
+      "expected_entry_confirmed": true,
+      "expected_entry_zone": [98, 102],
+      "reason": "foreign_buy_streak_day = 4 落在 2–4 窗口上限，仍應進場。spec.md 7.6.3。"
+    },
+    {
+      "name": "外資連買第5天",
+      "foreign_buy_streak_day": 5,
+      "today_low": 99,
+      "today_high": 101,
+      "close": 100,
+      "expected_entry_confirmed": false,
+      "expected_entry_zone": null,
+      "reason": "foreign_buy_streak_day = 5 超過 2–4 進場窗口，不應進場。spec.md 7.6.3。"
+    },
+    {
+      "name": "外資連買第1天",
+      "foreign_buy_streak_day": 1,
+      "today_low": 99,
+      "today_high": 101,
+      "close": 100,
+      "expected_entry_confirmed": false,
+      "expected_entry_zone": null,
+      "reason": "foreign_buy_stress_day = 1 未達 2–4 進場窗口下限，不應進場。spec.md 7.6.3。"
+    }
+  ]
+}

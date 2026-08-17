@@ -1,0 +1,55 @@
+{
+  "fetch_date": "2026-08-02",
+  "fetch_timestamp": "2026-08-02T18:30:00",
+  "source_url": "https://www.twse.com.tw/rwd/zh/fund/T86?date=20260802&selectType=ALLBUT0999",
+  "record_count": 3,
+  "data": [
+    {
+      "ticker": "R002",
+      "name": "Rolling-Streak-AllPositive",
+      "foreign_buy": 0,
+      "foreign_sell": 0,
+      "foreign_net": 10,
+      "trust_buy": 0,
+      "trust_sell": 0,
+      "trust_net": 20,
+      "dealer_net": 0
+    },
+    {
+      "ticker": "R003",
+      "name": "Rolling-Streak-BrokenOnce",
+      "foreign_buy": 0,
+      "foreign_sell": 0,
+      "foreign_net": 10,
+      "trust_buy": 0,
+      "trust_sell": 0,
+      "trust_net": 20,
+      "dealer_net": 0
+    },
+    {
+      "ticker": "R004",
+      "name": "Rolling-Streak-TodayNegative",
+      "foreign_buy": 0,
+      "foreign_sell": 0,
+      "foreign_net": -5,
+      "trust_buy": 0,
+      "trust_sell": 0,
+      "trust_net": 20,
+      "dealer_net": 0
+    }
+  ],
+  "daily_history": {
+    "R002": {
+      "foreign_net": [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
+      "trust_net": [20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20]
+    },
+    "R003": {
+      "foreign_net": [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, -5, 10],
+      "trust_net": [20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20]
+    },
+    "R004": {
+      "foreign_net": [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, -5],
+      "trust_net": [20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20]
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "date": "2026-08-03",
+  "setup_b_candidates": [],
+  "excluded": [
+    {
+      "ticker": "B102",
+      "name": "SetupB-TrustDaysLow-V2",
+      "should_include": false,
+      "reason": "投信 10 日買超天數 6 < 7，不符合 Setup B 篩選條件（spec.md 3.2）。"
+    }
+  ],
+  "manually_verified_by": "PENDING",
+  "verified_at": null
+}

@@ -1,0 +1,79 @@
+{
+  "date": "2026-08-02",
+  "source": "simulated rolling + price data for Setup C oracle v2",
+  "market_cap_threshold_b": 1000,
+  "stocks": [
+    {
+      "ticker": "C101",
+      "name": "SetupC-Pass-V2",
+      "screen_date": "2026-08-02",
+      "market_cap_b": 2000,
+      "close": 100,
+      "ma20": 96,
+      "foreign_20d_net": -1350,
+      "foreign_recent_3d": true,
+      "foreign_buy_streak_day": 3,
+      "price_bottom_status": "higher_lows",
+      "entry_day": 3,
+      "foreign_daily_20d": [
+        -100, -100, -100, -100, -100, -100, -100, -100, -100, -100,
+        -100, -100, -100, -100, -100, -100, -100, 80, 120, 150
+      ],
+      "recent_lows_10d": [85, 86, 87, 88, 89, 90, 91, 92, 93, 94]
+    },
+    {
+      "ticker": "C102",
+      "name": "SetupC-Foreign20dPositive-V2",
+      "screen_date": "2026-08-02",
+      "market_cap_b": 2000,
+      "close": 100,
+      "ma20": 96,
+      "foreign_20d_net": 500,
+      "foreign_recent_3d": true,
+      "foreign_buy_streak_day": 20,
+      "price_bottom_status": "higher_lows",
+      "entry_day": 3,
+      "foreign_daily_20d": [
+        25, 25, 25, 25, 25, 25, 25, 25, 25, 25,
+        25, 25, 25, 25, 25, 25, 25, 25, 25, 25
+      ],
+      "recent_lows_10d": [85, 86, 87, 88, 89, 90, 91, 92, 93, 94]
+    },
+    {
+      "ticker": "C103",
+      "name": "SetupC-Recent3dNotBuy-V2",
+      "screen_date": "2026-08-02",
+      "market_cap_b": 2000,
+      "close": 100,
+      "ma20": 96,
+      "foreign_20d_net": -1510,
+      "foreign_recent_3d": false,
+      "foreign_buy_streak_day": 1,
+      "price_bottom_status": "higher_lows",
+      "entry_day": 3,
+      "foreign_daily_20d": [
+        -100, -100, -100, -100, -100, -100, -100, -100, -100, -100,
+        -100, -100, -100, -100, -100, -100, -100, 80, -10, 120
+      ],
+      "recent_lows_10d": [85, 86, 87, 88, 89, 90, 91, 92, 93, 94]
+    },
+    {
+      "ticker": "C104",
+      "name": "SetupC-MarketCapLow-V2",
+      "screen_date": "2026-08-02",
+      "market_cap_b": 500,
+      "close": 100,
+      "ma20": 96,
+      "foreign_20d_net": -1350,
+      "foreign_recent_3d": true,
+      "foreign_buy_streak_day": 3,
+      "price_bottom_status": "higher_lows",
+      "entry_day": 3,
+      "foreign_daily_20d": [
+        -100, -100, -100, -100, -100, -100, -100, -100, -100, -100,
+        -100, -100, -100, -100, -100, -100, -100, 80, 120, 150
+      ],
+      "recent_lows_10d": [85, 86, 87, 88, 89, 90, 91, 92, 93, 94]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "date": "2026-08-02",
+  "setup": "c",
+  "cases": [
+    {
+      "name": "外資連續轉賣且跌破整理區間",
+      "exit_signals": ["E1 外資連續轉賣", "E2 跌破整理區間下緣"],
+      "stoploss_triggered": false,
+      "stopprofit_reminder": false,
+      "pnl_pct": -4.0
+    },
+    {
+      "name": "觸發停利提醒",
+      "exit_signals": [],
+      "stoploss_triggered": false,
+      "stopprofit_reminder": true,
+      "pnl_pct": 10.0
+    },
+    {
+      "name": "觸及停損",
+      "exit_signals": [],
+      "stoploss_triggered": true,
+      "stopprofit_reminder": false,
+      "pnl_pct": -6.0
+    }
+  ]
+}

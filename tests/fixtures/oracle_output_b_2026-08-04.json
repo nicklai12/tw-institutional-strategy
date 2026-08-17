@@ -1,0 +1,14 @@
+{
+  "date": "2026-08-04",
+  "setup_b_candidates": [],
+  "excluded": [
+    {
+      "ticker": "B103",
+      "name": "SetupB-ForeignSell-V2",
+      "should_include": false,
+      "reason": "外資 10 日方向為 selling（ratio = (-600/10)/(100×1000/100) = -60/1000 = -6.0% < -5%），屬明顯大賣，不符合 Setup B 篩選條件（spec.md 3.2、7.8）。"
+    }
+  ],
+  "manually_verified_by": "PENDING",
+  "verified_at": null
+}

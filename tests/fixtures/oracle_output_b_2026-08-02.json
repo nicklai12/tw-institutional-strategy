@@ -1,0 +1,28 @@
+{
+  "date": "2026-08-02",
+  "setup_b_candidates": [
+    {
+      "ticker": "B101",
+      "name": "SetupB-Pass-V2",
+      "screen_date": "2026-08-02",
+      "avg_volume_20d_m": 100,
+      "trust_10d_net": 1000,
+      "trust_10d_buy_days": 8,
+      "foreign_10d_direction": "buying",
+      "close_vs_ma20": "above",
+      "breakout_price": 95,
+      "breakout_date": "2026-08-02",
+      "breakout_volume_m": 120,
+      "entry_zone": "突破價 95.00 之上且量縮",
+      "stop_loss_price": 93,
+      "position_size_lots": "待人工填寫",
+      "risk_r_pct": "待人工填寫",
+      "artifact_run_id": "23456",
+      "should_include": true,
+      "reason": "投信 10 日淨買超為正且買超天數 8 ≥ 7；外資 10 日方向為 buying（ratio = (600/10)/(100×1000/100) = 60/1000 = 6.0% > 5%）；股價站上 MA20；突破日成交量未失控爆量。符合 spec.md 3.2、7.8。"
+    }
+  ],
+  "excluded": [],
+  "manually_verified_by": "PENDING",
+  "verified_at": null
+}

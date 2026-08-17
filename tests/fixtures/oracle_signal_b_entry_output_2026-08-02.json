@@ -1,0 +1,46 @@
+{
+  "date": "2026-08-02",
+  "setup": "b",
+  "cases": [
+    {
+      "name": "T+1量縮不破",
+      "today_date": "2026-08-01",
+      "close": 102,
+      "volume_m": 40,
+      "entry_confirmed": true,
+      "reason": "trading_days_after_breakout = 1 ∈ {1,2}；收盤 102 ≥ 100；成交量 40 ≤ 40。spec.md 7.6.2。"
+    },
+    {
+      "name": "T+2量縮不破",
+      "today_date": "2026-08-02",
+      "close": 101,
+      "volume_m": 38,
+      "entry_confirmed": true,
+      "reason": "trading_days_after_breakout = 2 ∈ {1,2}；收盤 101 ≥ 100；成交量 38 ≤ 40。spec.md 7.6.2。"
+    },
+    {
+      "name": "T+3超過等待窗口",
+      "today_date": "2026-08-03",
+      "close": 101,
+      "volume_m": 38,
+      "entry_confirmed": false,
+      "reason": "trading_days_after_breakout = 3 ∉ {1,2}。spec.md 7.6.2。"
+    },
+    {
+      "name": "T+1跌破突破價",
+      "today_date": "2026-08-01",
+      "close": 99,
+      "volume_m": 35,
+      "entry_confirmed": false,
+      "reason": "收盤 99 < breakout_price 100。spec.md 7.6.2。"
+    },
+    {
+      "name": "T+1未量縮",
+      "today_date": "2026-08-01",
+      "close": 102,
+      "volume_m": 45,
+      "entry_confirmed": false,
+      "reason": "成交量 45 > 40。spec.md 7.6.2。"
+    }
+  ]
+}

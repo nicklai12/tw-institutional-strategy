@@ -1,0 +1,27 @@
+{
+  "date": "2026-08-02",
+  "setup": "b",
+  "cases": [
+    {
+      "name": "僅觸發投信連續賣超",
+      "partial_signals": ["E1 投信連續賣超（先出一半）"],
+      "exit_signals": [],
+      "stoploss_triggered": false,
+      "pnl_pct": -4.5
+    },
+    {
+      "name": "跌破MA10全出",
+      "partial_signals": ["E1 投信連續賣超（先出一半）"],
+      "exit_signals": ["E2 跌破 MA10/前低（全出）"],
+      "stoploss_triggered": false,
+      "pnl_pct": -5.5
+    },
+    {
+      "name": "觸及停損",
+      "partial_signals": [],
+      "exit_signals": [],
+      "stoploss_triggered": true,
+      "pnl_pct": -7.0
+    }
+  ]
+}

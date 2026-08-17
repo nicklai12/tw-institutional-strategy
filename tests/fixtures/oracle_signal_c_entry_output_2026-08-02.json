@@ -1,0 +1,46 @@
+{
+  "date": "2026-08-02",
+  "setup": "c",
+  "cases": [
+    {
+      "name": "外資連買第2天",
+      "foreign_buy_streak_day": 2,
+      "today_low": 99,
+      "today_high": 101,
+      "close": 100,
+      "entry_confirmed": true,
+      "entry_zone": [99, 101],
+      "reason": "foreign_buy_streak_day = 2 在 2–4 窗口。spec.md 7.6.3。"
+    },
+    {
+      "name": "外資連買第4天",
+      "foreign_buy_streak_day": 4,
+      "today_low": 98,
+      "today_high": 102,
+      "close": 100,
+      "entry_confirmed": true,
+      "entry_zone": [98, 102],
+      "reason": "foreign_buy_streak_day = 4 在 2–4 窗口。spec.md 7.6.3。"
+    },
+    {
+      "name": "外資連買第5天",
+      "foreign_buy_streak_day": 5,
+      "today_low": 99,
+      "today_high": 101,
+      "close": 100,
+      "entry_confirmed": false,
+      "entry_zone": null,
+      "reason": "foreign_buy_streak_day = 5 不在 2–4 窗口。spec.md 7.6.3。"
+    },
+    {
+      "name": "外資連買第1天",
+      "foreign_buy_streak_day": 1,
+      "today_low": 99,
+      "today_high": 101,
+      "close": 100,
+      "entry_confirmed": false,
+      "entry_zone": null,
+      "reason": "foreign_buy_streak_day = 1 不在 2–4 窗口。spec.md 7.6.3。"
+    }
+  ]
+}

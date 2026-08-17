@@ -1,0 +1,39 @@
+{
+  "date": "2026-08-02",
+  "setup": "c",
+  "cases": [
+    {
+      "name": "外資連續轉賣且跌破整理區間",
+      "entry_price": 100,
+      "close": 96,
+      "recent_low_10d": 97,
+      "foreign_net_last_2d": [-10, -20],
+      "expected_exit_signals": ["E1 外資連續轉賣", "E2 跌破整理區間下緣"],
+      "expected_stoploss_triggered": false,
+      "expected_stopprofit_reminder": false,
+      "reason": "外資連續 2 日轉賣 → E1；收盤 96 < recent_low_10d 97 → E2；pnl = -4.0% > -5%，未觸停損；不在 8%–12% 停利區間。spec.md 7.7.3。"
+    },
+    {
+      "name": "觸發停利提醒",
+      "entry_price": 90,
+      "close": 99,
+      "recent_low_10d": 85,
+      "foreign_net_last_2d": [10, 20],
+      "expected_exit_signals": [],
+      "expected_stoploss_triggered": false,
+      "expected_stopprofit_reminder": true,
+      "reason": "未觸發 E1/E2；pnl = +10.0% 落在 8%–12% 區間，應標記 stopprofit_reminder。spec.md 7.7.3。"
+    },
+    {
+      "name": "觸及停損",
+      "entry_price": 100,
+      "close": 94,
+      "recent_low_10d": 93,
+      "foreign_net_last_2d": [10, 20],
+      "expected_exit_signals": [],
+      "expected_stoploss_triggered": true,
+      "expected_stopprofit_reminder": false,
+      "reason": "未觸發 E1/E2；pnl = -6.0% ≤ -5%，觸及 Setup C 停損。spec.md 7.7、7.7.3。"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "date": "2026-08-02",
+  "setup": "b",
+  "cases": [
+    {
+      "name": "僅觸發投信連續賣超",
+      "entry_price": 100,
+      "close": 95.5,
+      "ma10": 95,
+      "recent_low_20d": 94,
+      "trust_net_last_2d": [-10, -20],
+      "expected_partial_signals": ["E1 投信連續賣超（先出一半）"],
+      "expected_exit_signals": [],
+      "expected_stoploss_triggered": false,
+      "reason": "投信連續 2 日賣超 → E1；收盤 95.5 不低於 MA10 95 且不低於前低 94 → E2 不成立；pnl = -4.5% > -6%，未觸停損。spec.md 7.7.2。"
+    },
+    {
+      "name": "跌破MA10全出",
+      "entry_price": 100,
+      "close": 94.5,
+      "ma10": 95,
+      "recent_low_20d": 93,
+      "trust_net_last_2d": [-10, -20],
+      "expected_partial_signals": ["E1 投信連續賣超（先出一半）"],
+      "expected_exit_signals": ["E2 跌破 MA10/前低（全出）"],
+      "expected_stoploss_triggered": false,
+      "reason": "投信連續 2 日賣超 → E1；收盤 94.5 < MA10 95 → E2 成立；pnl = -5.5% > -6%。spec.md 7.7.2。"
+    },
+    {
+      "name": "觸及停損",
+      "entry_price": 100,
+      "close": 93,
+      "ma10": 92,
+      "recent_low_20d": 91,
+      "trust_net_last_2d": [10, 20],
+      "expected_partial_signals": [],
+      "expected_exit_signals": [],
+      "expected_stoploss_triggered": true,
+      "reason": "未觸發 E1/E2；pnl = -7.0% ≤ -6%，觸及 Setup B 停損。spec.md 7.7、7.7.2。"
+    }
+  ]
+}
