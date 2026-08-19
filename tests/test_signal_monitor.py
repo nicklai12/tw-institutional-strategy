@@ -1,23 +1,29 @@
 """Tests for the Signal Monitor."""
 
+import glob
 import json
 import os
+from datetime import datetime, timedelta
 from unittest.mock import patch
 
 import pytest
 
 from scripts.monitor.signal_monitor import (
     check_entry_signal,
+    compute_foreign_buy_streak_day,
     compute_price_metrics,
+    count_trading_days_after_breakout,
     evaluate_signals,
     parse_entry_info,
 )
 
 
-def _make_history(closes: list[float]) -> list[dict]:
+def _make_history(closes: list[float], turnover: list[float] | None = None) -> list[dict]:
+    if turnover is None:
+        turnover = [0.0] * len(closes)
     return [
-        {"date": f"11507{i + 1:02d}", "close": c, "high": c, "low": c}
-        for i, c in enumerate(closes)
+        {"date": f"11507{i + 1:02d}", "close": c, "high": c, "low": c, "turnover": t}
+        for i, (c, t) in enumerate(zip(closes, turnover))
     ]
 
 
@@ -384,3 +390,289 @@ def test_main_entry_signal_no_label_change_when_not_triggered(
     report_path = "data/monitor/monitor_report_20260728.json"
     if os.path.exists(report_path):
         os.remove(report_path)
+
+
+def _make_raw_data_with_dates(
+    ticker: str, foreign_nets: list[float], trust_nets: list[float], dates: list[str]
+) -> list:
+    records = []
+    for date_str, fn, tn in zip(dates, foreign_nets, trust_nets):
+        records.append(
+            (
+                date_str,
+                {
+                    "data": [
+                        {
+                            "ticker": ticker,
+                            "foreign_net": fn,
+                            "trust_net": tn,
+                        }
+                    ]
+                },
+            )
+        )
+    return records
+
+
+def _date_range_compact(start: str, end: str) -> list[str]:
+    """Return compact YYYYMMDD dates from start to end inclusive."""
+    start_dt = datetime.strptime(start, "%Y%m%d")
+    end_dt = datetime.strptime(end, "%Y%m%d")
+    dates = []
+    current = start_dt
+    while current <= end_dt:
+        dates.append(current.strftime("%Y%m%d"))
+        current += timedelta(days=1)
+    return dates
+
+
+# ---------------------------------------------------------------------------
+# Oracle-based tests for Setup B / C entry and exit signals
+# ---------------------------------------------------------------------------
+
+
+def _entry_oracle_paths(setup: str) -> list[tuple[str, str]]:
+    """Return (input_path, output_path) pairs for Setup B/C entry oracles."""
+    inputs = sorted(
+        glob.glob(f"tests/fixtures/oracle_signal_{setup}_entry_input_????-??-??.json")
+    )
+    pairs = []
+    for inp in inputs:
+        out = inp.replace("_input_", "_output_")
+        pairs.append((inp, out))
+    return pairs
+
+
+def _exit_oracle_paths(setup: str) -> list[tuple[str, str]]:
+    """Return (input_path, output_path) pairs for Setup B/C exit oracles."""
+    inputs = sorted(
+        glob.glob(f"tests/fixtures/oracle_signal_{setup}_exit_input_????-??-??.json")
+    )
+    pairs = []
+    for inp in inputs:
+        out = inp.replace("_input_", "_output_")
+        pairs.append((inp, out))
+    return pairs
+
+
+@pytest.mark.parametrize("input_path,output_path", _entry_oracle_paths("b"))
+def test_setup_b_entry_oracle(input_path: str, output_path: str):
+    with open(input_path, encoding="utf-8") as f:
+        oracle_input = json.load(f)
+    with open(output_path, encoding="utf-8") as f:
+        oracle_output = json.load(f)
+
+    breakout_date = oracle_input["breakout_date"]
+    breakout_price = oracle_input["breakout_price"]
+    breakout_volume_m = oracle_input["breakout_volume_m"]
+
+    for case, expected in zip(oracle_input["cases"], oracle_output["cases"]):
+        today_date = case["today_date"].replace("-", "")
+        raw_dates = [d.replace("-", "") for d in oracle_input.get("raw_dates", [])]
+        if not raw_dates:
+            raw_dates = _date_range_compact(
+                breakout_date.replace("-", ""), today_date
+            )
+        raw_data = _make_raw_data_with_dates(
+            "2330",
+            [1.0] * len(raw_dates),
+            [1.0] * len(raw_dates),
+            raw_dates,
+        )
+
+        def fake_fetch_stock_history(ticker: str, date: str) -> list[dict]:
+            # Provide just enough history for compute_price_metrics.
+            return _make_history(
+                [100.0] * 24 + [case["close"]],
+                turnover=[0.0] * 24 + [case["volume_m"] * 1_000_000],
+            )
+
+        with patch(
+            "scripts.monitor.signal_monitor.fetch_price_metrics",
+            return_value={"close": case["close"], "ma5": 100.0, "ma20": 100.0},
+        ), patch(
+            "scripts.monitor.signal_monitor.fetch_stock_history",
+            side_effect=fake_fetch_stock_history,
+        ):
+            signal = check_entry_signal(
+                "2330",
+                today_date,
+                setup_type="b",
+                issue_info={
+                    "breakout_date": breakout_date,
+                    "breakout_price": breakout_price,
+                    "breakout_volume_m": breakout_volume_m,
+                },
+                raw_data=raw_data,
+            )
+
+        assert signal is not None, case["name"]
+        expected_confirmed = expected.get(
+            "entry_confirmed", case.get("expected_entry_confirmed")
+        )
+        assert signal["triggered"] == expected_confirmed, case["name"]
+
+
+@pytest.mark.parametrize("input_path,output_path", _entry_oracle_paths("c"))
+def test_setup_c_entry_oracle(input_path: str, output_path: str):
+    with open(input_path, encoding="utf-8") as f:
+        oracle_input = json.load(f)
+    with open(output_path, encoding="utf-8") as f:
+        oracle_output = json.load(f)
+
+    for case, expected in zip(oracle_input["cases"], oracle_output["cases"]):
+        today_date = "20260801"  # compact date used by fetch_price_metrics mock
+
+        def fake_fetch_stock_history(ticker: str, date: str) -> list[dict]:
+            closes = [100.0] * 24 + [case["close"]]
+            turnover = [0.0] * 24 + [1_000_000]
+            return [
+                {
+                    "date": f"11507{i + 1:02d}",
+                    "close": c,
+                    "high": case["today_high"] if i == len(closes) - 1 else c,
+                    "low": case["today_low"] if i == len(closes) - 1 else c,
+                    "turnover": t,
+                }
+                for i, (c, t) in enumerate(zip(closes, turnover))
+            ]
+
+        with patch(
+            "scripts.monitor.signal_monitor.compute_foreign_buy_streak_day",
+            return_value=case["foreign_buy_streak_day"],
+        ), patch(
+            "scripts.monitor.signal_monitor.fetch_price_metrics",
+            return_value={"close": case["close"], "ma5": 100.0, "ma20": 100.0},
+        ), patch(
+            "scripts.monitor.signal_monitor.fetch_stock_history",
+            side_effect=fake_fetch_stock_history,
+        ):
+            signal = check_entry_signal(
+                "2330",
+                today_date,
+                setup_type="c",
+                raw_data=[],  # streak is mocked
+            )
+
+        assert signal is not None, case["name"]
+        expected_confirmed = expected.get(
+            "entry_confirmed", case.get("expected_entry_confirmed")
+        )
+        expected_zone = expected.get("entry_zone", case.get("expected_entry_zone"))
+        assert signal["triggered"] == expected_confirmed, case["name"]
+        assert signal["entry_zone"] == expected_zone, case["name"]
+
+
+@pytest.mark.parametrize("input_path,output_path", _exit_oracle_paths("b"))
+def test_setup_b_exit_oracle(input_path: str, output_path: str):
+    with open(input_path, encoding="utf-8") as f:
+        oracle_input = json.load(f)
+    with open(output_path, encoding="utf-8") as f:
+        oracle_output = json.load(f)
+
+    cases = oracle_input.get("cases", [oracle_input])
+    expected_cases = oracle_output.get("cases", [oracle_output])
+
+    for case, expected in zip(cases, expected_cases):
+        metrics = {
+            "close": case["close"],
+            "ma10": case.get("ma10"),
+            "recent_low_20d": case.get("recent_low_20d"),
+        }
+        nets = case["trust_net_last_2d"]
+        raw_data = _make_raw_data_with_dates(
+            "2330",
+            [1.0] * len(nets),
+            nets,
+            [f"202607{26 + i:02d}" for i in range(len(nets))],
+        )
+        result = evaluate_signals(
+            "b",
+            case["entry_price"],
+            "2026-07-01",
+            metrics,
+            raw_data,
+            "2330",
+            "2026-07-28",
+        )
+
+        assert result["pnl_pct"] == expected["pnl_pct"], case.get("name", "")
+        assert result["partial_signals"] == expected["partial_signals"], case.get(
+            "name", ""
+        )
+        assert result["exit_signals"] == expected["exit_signals"], case.get("name", "")
+        assert result["stoploss_triggered"] == expected["stoploss_triggered"], case.get(
+            "name", ""
+        )
+
+
+@pytest.mark.parametrize("input_path,output_path", _exit_oracle_paths("c"))
+def test_setup_c_exit_oracle(input_path: str, output_path: str):
+    with open(input_path, encoding="utf-8") as f:
+        oracle_input = json.load(f)
+    with open(output_path, encoding="utf-8") as f:
+        oracle_output = json.load(f)
+
+    cases = oracle_input.get("cases", [oracle_input])
+    expected_cases = oracle_output.get("cases", [oracle_output])
+
+    for case, expected in zip(cases, expected_cases):
+        metrics = {
+            "close": case["close"],
+            "recent_low_10d": case.get("recent_low_10d"),
+        }
+        nets = case["foreign_net_last_2d"]
+        raw_data = _make_raw_data_with_dates(
+            "2330",
+            nets,
+            [1.0] * len(nets),
+            [f"202607{26 + i:02d}" for i in range(len(nets))],
+        )
+        result = evaluate_signals(
+            "c",
+            case["entry_price"],
+            "2026-07-01",
+            metrics,
+            raw_data,
+            "2330",
+            "2026-07-28",
+        )
+
+        assert result["pnl_pct"] == expected["pnl_pct"], case.get("name", "")
+        assert result["exit_signals"] == expected["exit_signals"], case.get("name", "")
+        assert result["stoploss_triggered"] == expected["stoploss_triggered"], case.get(
+            "name", ""
+        )
+        assert result["stopprofit_reminder"] == expected[
+            "stopprofit_reminder"
+        ], case.get("name", "")
+
+
+def test_compute_foreign_buy_streak_day_counts_consecutive_positive():
+    raw_data = _make_raw_data_with_dates(
+        "2330",
+        [10.0, 20.0, -5.0, 30.0],
+        [0.0, 0.0, 0.0, 0.0],
+        ["20260725", "20260726", "20260727", "20260728"],
+    )
+    # Most recent day (20260728) is positive; streak is 1.
+    assert compute_foreign_buy_streak_day(raw_data, "2330") == 1
+
+    raw_data = _make_raw_data_with_dates(
+        "2330",
+        [-5.0, 10.0, 20.0, 30.0],
+        [0.0, 0.0, 0.0, 0.0],
+        ["20260725", "20260726", "20260727", "20260728"],
+    )
+    assert compute_foreign_buy_streak_day(raw_data, "2330") == 3
+
+
+def test_count_trading_days_after_breakout_excludes_breakout_date():
+    raw_data = _make_raw_data_with_dates(
+        "2330",
+        [1.0, 1.0, 1.0],
+        [1.0, 1.0, 1.0],
+        ["20260730", "20260731", "20260801"],
+    )
+    assert count_trading_days_after_breakout(raw_data, "20260731", "20260801") == 1
+    assert count_trading_days_after_breakout(raw_data, "20260731", "20260802") == 1

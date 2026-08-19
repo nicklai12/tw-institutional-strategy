@@ -22,6 +22,8 @@ _SETUP_STOP_LOSS_PCT = {
     "c": 5.0,
 }
 
+_SETUP_B_VOLUME_CONTRACTION_RATIO = 0.8
+
 
 def _today_str() -> str:
     return date.today().strftime("%Y-%m-%d")
@@ -176,8 +178,14 @@ def get_issue_details(number: int) -> dict[str, Any] | None:
         return None
 
 
-def parse_entry_info(issue: dict[str, Any]) -> dict[str, Any] | None:
-    """Extract ticker, setup_type, entry_date and entry_price from issue body/comments."""
+def parse_entry_info(issue: dict[str, Any], require_entry: bool = True) -> dict[str, Any] | None:
+    """Extract ticker, setup_type, entry_date and entry_price from issue body/comments.
+
+    Args:
+        issue: GitHub issue dict with title, body, labels and comments.
+        require_entry: If True, entry_date and entry_price must be present.
+            Use False for auto-ok issues that have not been entered yet.
+    """
     title = issue.get("title", "")
     body = issue.get("body", "") or ""
     comments = issue.get("comments", []) or []
@@ -197,6 +205,11 @@ def parse_entry_info(issue: dict[str, Any]) -> dict[str, Any] | None:
     entry_date = None
     entry_price = None
     ticker = None
+    breakout_date = None
+    breakout_price = None
+    breakout_volume_m = None
+    entry_day = None
+    foreign_buy_streak_day = None
 
     for text in texts:
         if setup_type is None:
@@ -212,6 +225,36 @@ def parse_entry_info(issue: dict[str, Any]) -> dict[str, Any] | None:
                     entry_price = None
         if ticker is None:
             ticker = _parse_field(text, "ticker")
+        if breakout_date is None:
+            breakout_date = _parse_field(text, "breakout_date")
+        if breakout_price is None:
+            breakout_price_str = _parse_field(text, "breakout_price")
+            if breakout_price_str:
+                try:
+                    breakout_price = float(breakout_price_str.replace(",", ""))
+                except ValueError:
+                    breakout_price = None
+        if breakout_volume_m is None:
+            breakout_volume_m_str = _parse_field(text, "breakout_volume_m")
+            if breakout_volume_m_str:
+                try:
+                    breakout_volume_m = float(breakout_volume_m_str.replace(",", ""))
+                except ValueError:
+                    breakout_volume_m = None
+        if entry_day is None:
+            entry_day_str = _parse_field(text, "entry_day")
+            if entry_day_str:
+                try:
+                    entry_day = int(entry_day_str.replace(",", ""))
+                except ValueError:
+                    entry_day = None
+        if foreign_buy_streak_day is None:
+            foreign_buy_streak_day_str = _parse_field(text, "foreign_buy_streak_day")
+            if foreign_buy_streak_day_str:
+                try:
+                    foreign_buy_streak_day = int(foreign_buy_streak_day_str.replace(",", ""))
+                except ValueError:
+                    foreign_buy_streak_day = None
 
     if ticker is None:
         ticker = _extract_ticker_from_title(title)
@@ -228,7 +271,9 @@ def parse_entry_info(issue: dict[str, Any]) -> dict[str, Any] | None:
         else:
             setup_type = _normalize_setup_type(title)
 
-    if not all([ticker, setup_type, entry_date, entry_price]):
+    if require_entry and not all([ticker, setup_type, entry_date, entry_price]):
+        return None
+    if not require_entry and not all([ticker, setup_type]):
         return None
 
     return {
@@ -236,6 +281,11 @@ def parse_entry_info(issue: dict[str, Any]) -> dict[str, Any] | None:
         "setup_type": setup_type,
         "entry_date": entry_date,
         "entry_price": entry_price,
+        "breakout_date": breakout_date,
+        "breakout_price": breakout_price,
+        "breakout_volume_m": breakout_volume_m,
+        "entry_day": entry_day,
+        "foreign_buy_streak_day": foreign_buy_streak_day,
     }
 
 
@@ -301,6 +351,37 @@ def count_trading_days(
     return count
 
 
+def count_trading_days_after_breakout(
+    raw_data: list[tuple[str, dict[str, Any]]], breakout_date: str, today_str: str
+) -> int:
+    """Count trading days strictly after breakout_date up to and including today."""
+    count = 0
+    for date_str, _ in raw_data:
+        if breakout_date < date_str <= today_str:
+            count += 1
+    return count
+
+
+def compute_foreign_buy_streak_day(
+    raw_data: list[tuple[str, dict[str, Any]]], ticker: str
+) -> int:
+    """Count consecutive foreign_net > 0 days ending at the most recent raw date."""
+    count = 0
+    for date_str, payload in reversed(raw_data):
+        record = None
+        for rec in payload.get("data", []):
+            if rec.get("ticker") == ticker:
+                record = rec
+                break
+        if record is None:
+            break
+        if record.get("foreign_net", 0) > 0:
+            count += 1
+        else:
+            break
+    return count
+
+
 def fetch_stock_history(ticker: str, date_str: str) -> list[dict[str, Any]] | None:
     """Fetch daily K-lines up to and including date_str."""
     target_roc = _to_roc_date(date_str)
@@ -326,11 +407,12 @@ def fetch_stock_history(ticker: str, date_str: str) -> list[dict[str, Any]] | No
             close_i = fields.index("收盤價")
             high_i = fields.index("最高價")
             low_i = fields.index("最低價")
+            turnover_i = fields.index("成交金額")
         except ValueError:
             continue
 
         for row in rows:
-            if len(row) <= max(date_i, close_i, high_i, low_i):
+            if len(row) <= max(date_i, close_i, high_i, low_i, turnover_i):
                 continue
             try:
                 item = {
@@ -338,6 +420,7 @@ def fetch_stock_history(ticker: str, date_str: str) -> list[dict[str, Any]] | No
                     "close": float(str(row[close_i]).replace(",", "")),
                     "high": float(str(row[high_i]).replace(",", "")),
                     "low": float(str(row[low_i]).replace(",", "")),
+                    "turnover": float(str(row[turnover_i]).replace(",", "")),
                 }
                 if item["date"] not in seen_dates:
                     seen_dates.add(item["date"])
@@ -393,6 +476,15 @@ def compute_price_metrics(history: list[dict[str, Any]]) -> dict[str, Any] | Non
         window_10d = history[-10:]
         recent_low_10d = round(min(item.get("low", item["close"]) for item in window_10d), 2)
 
+    today_item = history[-1] if history else {}
+    volume_today_m = None
+    turnover = today_item.get("turnover")
+    if turnover is not None:
+        volume_today_m = round(turnover / 1_000_000, 2)
+
+    today_low = today_item.get("low")
+    today_high = today_item.get("high")
+
     return {
         "close": round(today_close, 2),
         "ma20": ma20,
@@ -403,6 +495,9 @@ def compute_price_metrics(history: list[dict[str, Any]]) -> dict[str, Any] | Non
         "today_close_below_ma20": ma20 is not None and today_close < ma20,
         "recent_low_20d": recent_low_20d,
         "recent_low_10d": recent_low_10d,
+        "volume_today_m": volume_today_m,
+        "today_low": today_low,
+        "today_high": today_high,
     }
 
 
@@ -506,11 +601,20 @@ def evaluate_signals(
     }
 
 
-def check_entry_signal(ticker: str, date_str: str | None = None) -> dict[str, Any] | None:
-    """Check if today's close falls between MA5 and MA20 (entry zone).
+def check_entry_signal(
+    ticker: str,
+    date_str: str | None = None,
+    setup_type: str = "a",
+    issue_info: dict[str, Any] | None = None,
+    raw_data: list[tuple[str, dict[str, Any]]] | None = None,
+) -> dict[str, Any] | None:
+    """Check if today's close satisfies the entry rule for the given setup.
 
-    Returns dict with keys: triggered, close, ma5, ma20, lower, upper.
-    Returns None if price metrics cannot be fetched.
+    Setup A: close falls between MA5 and MA20.
+    Setup B: breakout follow-through with volume contraction.
+    Setup C: foreign buy streak day in [2, 4].
+
+    Returns None if required price metrics cannot be fetched.
     """
     if date_str is None:
         date_str = _today_compact()
@@ -520,23 +624,85 @@ def check_entry_signal(ticker: str, date_str: str | None = None) -> dict[str, An
         return None
 
     close = metrics.get("close")
-    ma5 = metrics.get("ma5")
-    ma20 = metrics.get("ma20")
-    if close is None or ma5 is None or ma20 is None:
+    if close is None:
         return None
 
-    lower = min(ma5, ma20)
-    upper = max(ma5, ma20)
-    triggered = lower <= close <= upper
+    if setup_type == "a":
+        ma5 = metrics.get("ma5")
+        ma20 = metrics.get("ma20")
+        if ma5 is None or ma20 is None:
+            return None
+        lower = min(ma5, ma20)
+        upper = max(ma5, ma20)
+        triggered = lower <= close <= upper
+        return {
+            "triggered": triggered,
+            "close": close,
+            "ma5": ma5,
+            "ma20": ma20,
+            "lower": round(lower, 2),
+            "upper": round(upper, 2),
+        }
 
-    return {
-        "triggered": triggered,
-        "close": close,
-        "ma5": ma5,
-        "ma20": ma20,
-        "lower": round(lower, 2),
-        "upper": round(upper, 2),
-    }
+    # Setup B and C need high/low/volume from the full history.
+    history = fetch_stock_history(ticker, date_str)
+    if history is None:
+        return None
+    full_metrics = compute_price_metrics(history)
+    if full_metrics is None:
+        return None
+
+    if setup_type == "b":
+        issue_info = issue_info or {}
+        breakout_date = issue_info.get("breakout_date")
+        breakout_price = issue_info.get("breakout_price")
+        breakout_volume_m = issue_info.get("breakout_volume_m")
+        volume_today_m = full_metrics.get("volume_today_m")
+        if (
+            breakout_date is None
+            or breakout_price is None
+            or breakout_volume_m is None
+            or volume_today_m is None
+            or raw_data is None
+        ):
+            return None
+        trading_days_after_breakout = count_trading_days_after_breakout(
+            raw_data, breakout_date.replace("-", ""), date_str
+        )
+        triggered = (
+            trading_days_after_breakout in (1, 2)
+            and close >= breakout_price
+            and volume_today_m <= breakout_volume_m * _SETUP_B_VOLUME_CONTRACTION_RATIO
+        )
+        return {
+            "triggered": triggered,
+            "close": close,
+            "volume_today_m": volume_today_m,
+            "breakout_price": breakout_price,
+            "breakout_volume_m": breakout_volume_m,
+            "trading_days_after_breakout": trading_days_after_breakout,
+        }
+
+    if setup_type == "c":
+        if raw_data is None:
+            return None
+        foreign_buy_streak_day = compute_foreign_buy_streak_day(raw_data, ticker)
+        today_low = full_metrics.get("today_low")
+        today_high = full_metrics.get("today_high")
+        triggered = 2 <= foreign_buy_streak_day <= 4 and close > 0
+        entry_zone = None
+        if triggered and today_low is not None and today_high is not None:
+            entry_zone = [round(today_low, 2), round(today_high, 2)]
+        return {
+            "triggered": triggered,
+            "close": close,
+            "foreign_buy_streak_day": foreign_buy_streak_day,
+            "entry_zone": entry_zone,
+            "today_low": today_low,
+            "today_high": today_high,
+        }
+
+    return None
 
 
 def build_monitor_comment(result: dict[str, Any], setup_type: str) -> str:
@@ -687,16 +853,18 @@ def main() -> int:
         if issue is None:
             continue
 
-        title = issue.get("title", "")
-        body = issue.get("body", "") or ""
-        ticker = _parse_field(body, "ticker") or _extract_ticker_from_title(title)
-        if ticker is None:
-            print(f"WARNING: Issue #{number} 無法解析 ticker，跳過")
+        info = parse_entry_info(issue, require_entry=False)
+        if info is None:
+            print(f"WARNING: Issue #{number} 無法解析進場資訊，跳過")
             continue
 
-        entry_zone = _parse_field(body, "entry_zone")
+        ticker = info["ticker"]
+        setup_type = info["setup_type"]
+        entry_zone = _parse_field(issue.get("body", "") or "", "entry_zone")
 
-        signal = check_entry_signal(ticker, latest_raw_date)
+        signal = check_entry_signal(
+            ticker, latest_raw_date, setup_type=setup_type, issue_info=info, raw_data=raw_data
+        )
         if signal is None:
             print(f"WARNING: Issue #{number} ({ticker}) 無法取得進場價格指標，跳過")
             continue
@@ -726,9 +894,30 @@ def main() -> int:
                 "---",
                 f"📊 **進場訊號確認** {_today_str()}",
                 f"- 當日收盤：{signal['close']}",
-                f"- MA5：{signal['ma5']}",
-                f"- MA20：{signal['ma20']}",
             ]
+            if setup_type == "a":
+                comment_lines.extend(
+                    [
+                        f"- MA5：{signal['ma5']}",
+                        f"- MA20：{signal['ma20']}",
+                    ]
+                )
+            elif setup_type == "b":
+                comment_lines.extend(
+                    [
+                        f"- 突破價：{signal['breakout_price']}",
+                        f"- 今日成交量（百萬）：{signal['volume_today_m']}",
+                        f"- 突破日成交量（百萬）：{signal['breakout_volume_m']}",
+                        f"- 突破後交易日數：{signal['trading_days_after_breakout']}",
+                    ]
+                )
+            elif setup_type == "c":
+                comment_lines.extend(
+                    [
+                        f"- 外資連買天數：{signal['foreign_buy_streak_day']}",
+                        f"- 當日高低區間：[{signal['today_low']}, {signal['today_high']}]",
+                    ]
+                )
             if entry_zone:
                 comment_lines.append(f"- 進場區間參考值：{entry_zone}")
             comment_lines.extend(
