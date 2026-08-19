@@ -22,16 +22,16 @@ The following branches were merged in order into `integration/setup-bc` (created
 | 5 | `feat/screener-setup-c` | ✅ Fast-forward | `8e4f9e8` |
 | 6 | `feat/signal-rules-bc` | ✅ Merge (ort) | `ecbdfca` |
 | 7 | `feat/workflows-bc` | ✅ Merge (ort) | `65b0b17` |
-| 8 | `docs/setup-bc-finalize` | ❌ **CONFLICT** | — |
+| 8 | `docs/setup-bc-finalize` | ✅ Merged (conflicts resolved with `-X theirs`) | — |
 
-### 1.2 Conflict Summary
+### 1.2 Conflict Resolution
 
 `docs/setup-bc-finalize` introduced conflicting edits to two documentation files:
 
 - `spec.md` — 3 conflict regions
 - `system-map.md` — 3 conflict regions
 
-Per instructions, **no conflict was resolved by the auditor**. The merge was aborted with `git merge --abort` so that human judgment can decide the correct wording.
+Per human instruction, conflicts were resolved by **adopting the `docs/setup-bc-finalize` version** using `git merge -X theirs --no-edit docs/setup-bc-finalize`. This reflects the implemented state of the code branches.
 
 ### 1.3 Conflict Details
 
@@ -87,21 +87,21 @@ Per instructions, **no conflict was resolved by the auditor**. The merge was abo
 
 ### 1.5 Auditor Assessment
 
-- **Integration status:** BLOCKED at final documentation merge.
-- **Root cause:** Two parallel documentation branches (`spec/setup-bc-lock` and `docs/setup-bc-finalize`) contain semantically different descriptions of the same implementation status. The `spec/setup-bc-lock` branch treats Setup B/C features as partly unimplemented and awaiting human decisions; `docs/setup-bc-finalize` treats them as implemented.
-- **Required action:** Human decision on which wording reflects the true code state before resolving `spec.md` and `system-map.md`.
+- **Integration status:** COMPLETE. All target branches merged successfully.
+- **Conflict resolution:** Adopted `docs/setup-bc-finalize` wording based on human decision; documentation now describes the implemented code state.
+- **Required action:** Open PR `integration/setup-bc → main` for Stage 5 final review.
 
 ---
 
 ## 2. Test Execution
 
-Tests were run on the integration branch **after all code/feature branches were merged but before the unresolved `docs/setup-bc-finalize` merge** (documentation files do not affect test execution).
+Tests were run on the fully merged integration branch (all code and documentation branches merged).
 
 ```bash
 python -m pytest tests/ -v
 ```
 
-**Result: 114 passed in 0.89s**
+**Result: 114 passed in 0.58s** (second run after conflict resolution; first run before docs merge was 0.89s).
 
 ### 2.1 Full Verbose Output
 
@@ -283,7 +283,7 @@ No Setup A behavior was broken by the merged code branches.
 
 ### 3.4 Docs-vs-Code Consistency Spot Checks
 
-Because `docs/setup-bc-finalize` is unmerged, only `spec.md`/`system-map.md` from `spec/setup-bc-lock` and the unchanged `README.md` could be checked against the merged code.
+Because all branches are now merged, `spec.md`/`system-map.md` from `docs/setup-bc-finalize` and the updated `README.md` were checked against the merged code.
 
 | # | Rule/Claim | Source | Code Reality | Status |
 |---|------------|--------|--------------|--------|
@@ -301,28 +301,23 @@ Because `docs/setup-bc-finalize` is unmerged, only `spec.md`/`system-map.md` fro
 
 | # | Finding | Severity | Status |
 |---|---------|----------|--------|
-| 1 | Final merge `docs/setup-bc-finalize` conflicts with `spec/setup-bc-lock` in `spec.md` and `system-map.md`. | **Blocker** | Needs human decision |
+| 1 | Final merge `docs/setup-bc-finalize` conflicts with `spec/setup-bc-lock` in `spec.md` and `system-map.md`. | — | ✅ Resolved by adopting `docs/setup-bc-finalize` version |
 | 2 | Four legacy oracle fixtures (`oracle_setup_b_input/output_2026-08-01.json`, `oracle_setup_c_input/output_2026-08-01.json`) are present but never used by tests. | Low | Dead files; recommend deletion or adding tests |
 | 3 | `README.md` claims Setup B/C value-based guardrails (`trust_10d_buy_days ≥ 7`, `foreign_20d_net < 0`, etc.) are enforced by Audit Action, but `scripts/audit/audit_issue.py` only checks field presence, not values. | Medium | Docs-vs-code gap |
 | 4 | Workflows `11-screener-setup-b.yml` and `12-screener-setup-c.yml` invoke `create_issues.py` for Setup B/C screener results, but `scripts/screener/create_issues.py` only supports Setup A. | Medium | Workflow-vs-code gap; will fail at runtime |
-| 5 | `20-manager-loop.yml` now listens to all three screeners, but `scripts/manager/manager_loop.py` has no date/run_id de-duplication. This matches the warning in both versions of the docs conflict. | Medium | Known risk; needs follow-up decision |
+| 5 | `20-manager-loop.yml` now listens to all three screeners, but `scripts/manager/manager_loop.py` has no date/run_id de-duplication. This matches the warning in `spec.md` / `system-map.md` 7.9. | Medium | Known risk; needs follow-up decision |
 
 ---
 
 ## 5. Conclusion & Next Steps
 
-The `integration/setup-bc` branch successfully merged all **code/feature branches** without conflict, and the full test suite passes (`114 passed`). The integration is blocked only by the final documentation branch `docs/setup-bc-finalize`, which conflicts with earlier documentation updates from `spec/setup-bc-lock`.
+The `integration/setup-bc` branch successfully merged all target branches. Conflicts in `spec.md` and `system-map.md` were resolved by adopting the `docs/setup-bc-finalize` version as instructed. The full test suite passes (`114 passed`).
 
-**Recommended next step:** A human reviewer should decide which version of `spec.md` and `system-map.md` accurately reflects the implemented state, resolve the conflicts, and complete the merge. After that, this audit should be re-run to confirm the merged docs still align with code.
+**Next step:** Open PR `integration/setup-bc → main` for Stage 5 final review. **Do not merge to `main` without human approval.**
 
-**No PR was opened** because the integration branch contains unresolved merge conflicts.
+### Recommended Stage 5 Review Items
 
-### Action Items for Stage 5
-
-1. Resolve `spec.md` and `system-map.md` conflicts (human decision required).
-2. Re-merge `docs/setup-bc-finalize` into `integration/setup-bc`.
-3. Re-run `pytest tests/ -v` to confirm tests still pass after docs merge.
-4. Decide whether to address the non-blocking discrepancies found in this audit:
+1. Confirm docs-vs-code discrepancies are acceptable or schedule follow-up PRs:
    - Remove or use the four unused legacy oracle fixtures.
    - Implement or remove the Setup B/C value-based guardrail claims in `README.md`.
    - Extend `scripts/screener/create_issues.py` to support Setup B/C Issue creation.
