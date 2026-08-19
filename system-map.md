@@ -35,7 +35,7 @@ graph TD
     B -->|原始與滾動資料| D[data/raw + data/rolling]
     D -->|資料| E[scripts/screener]
     C -->|測試標準| E
-    E -->|10/11/12-screener-setup-{a|b|c}.yml| F[GitHub Issues<br/>setup-a/b/c + screened]
+    E -->|"10/11/12-screener-setup-{a|b|c}.yml"| F[GitHub Issues<br/>setup-a/b/c + screened]
     F -->|20-manager-loop.yml| J[scripts/manager]
     J -->|大盤/持倉正常| K[auto-ok]
     J -->|大盤急跌/持倉上限| KK[human-review<br/>guardrail-blocked]

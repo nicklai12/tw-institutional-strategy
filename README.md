@@ -12,7 +12,7 @@ graph TD
     B --> C[tests/fixtures]
     B --> D[scripts/screener]
     C --> D
-    D -->|10/11/12-screener-setup-{a|b|c}| E[GitHub Issues<br/>setup-a/b/c + screened]
+    D -->|"10/11/12-screener-setup-{a|b|c}"| E[GitHub Issues<br/>setup-a/b/c + screened]
     E -->|20-manager-loop| F2[scripts/manager]
     F2 -->|正常| G0[auto-ok]
     F2 -->|風險| G1[human-review<br/>guardrail-blocked]
