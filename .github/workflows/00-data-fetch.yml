@@ -2,7 +2,7 @@ name: 00 Data Fetch
 
 on:
   schedule:
-    - cron: "30 10 * * 1-5"   # 台灣時間 18:30，UTC 10:30
+    - cron: "0 12 * * 1-5"   # 台灣時間 20:00，UTC 12:00
   workflow_dispatch:            # 允許手動觸發（測試用）
 
 jobs:

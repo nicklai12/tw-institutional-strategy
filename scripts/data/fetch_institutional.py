@@ -6,6 +6,7 @@ import glob
 import json
 import os
 import sys
+import time
 from typing import Any
 
 import requests
@@ -17,6 +18,20 @@ _RAW_OUTPUT_DIR = "data/raw"
 _MIN_RECORD_COUNT = 100
 _API_TIMEOUT_SECONDS = 10
 _MAX_RAW_AGE_DAYS = 7
+
+_REQUEST_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/128.0.0.0 Safari/537.36"
+    ),
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+}
+
+_MAX_RETRIES = 3
+_RETRY_BACKOFF_BASE_SECONDS = 5
+_RETRY_BACKOFF_MULTIPLIER = 2
 
 # Field names observed in the TWSE T86 response for selectType=ALLBUT0999.
 _FIELD_TICKER = "證券代號"
@@ -132,6 +147,73 @@ def _build_source_url(compact_date: str) -> str:
     return f"{_API_BASE_URL}?date={compact_date}&selectType={_SELECT_TYPE}"
 
 
+def _fetch_with_retry(url: str) -> dict[str, Any]:
+    """Fetch TWSE JSON with retries, backoff and browser-like headers.
+
+    Retries on connection/timeout errors, non-OK HTTP status, malformed JSON,
+    and TWSE ``stat != "OK"``. Preserves the original RuntimeError codes used
+    by callers.
+    """
+    last_exc: Exception | None = None
+
+    for attempt in range(1, _MAX_RETRIES + 1):
+        try:
+            response = requests.get(
+                url, headers=_REQUEST_HEADERS, timeout=_API_TIMEOUT_SECONDS
+            )
+            response.raise_for_status()
+            response_data = response.json()
+        except requests.RequestException as exc:
+            status_code = exc.response.status_code if exc.response is not None else None
+            response_snippet = ""
+            if exc.response is not None:
+                try:
+                    response_snippet = exc.response.text[:200]
+                except Exception:
+                    pass
+            print(
+                f"WARN: API request attempt {attempt}/{_MAX_RETRIES} for {url} "
+                f"failed: {exc} (status={status_code}) {response_snippet!r}"
+            )
+            last_exc = exc
+        except ValueError as exc:
+            print(
+                f"WARN: API request attempt {attempt}/{_MAX_RETRIES} for {url} "
+                f"returned invalid JSON: {exc}"
+            )
+            last_exc = exc
+        else:
+            if not isinstance(response_data, dict):
+                print(
+                    f"WARN: API request attempt {attempt}/{_MAX_RETRIES} for {url} "
+                    f"returned non-dict JSON: {type(response_data).__name__}"
+                )
+                last_exc = ValueError("API_INVALID_RESPONSE")
+            elif response_data.get("stat") != "OK":
+                stat = response_data.get("stat")
+                snippet = json.dumps(response_data, ensure_ascii=False)[:200]
+                print(
+                    f"WARN: API request attempt {attempt}/{_MAX_RETRIES} for {url} "
+                    f"returned stat={stat!r} (snip: {snippet})"
+                )
+                last_exc = RuntimeError("STAT_NOT_OK")
+            else:
+                return response_data
+
+        if attempt < _MAX_RETRIES:
+            sleep_seconds = _RETRY_BACKOFF_BASE_SECONDS * (
+                _RETRY_BACKOFF_MULTIPLIER ** (attempt - 1)
+            )
+            print(f"WARN: retrying in {sleep_seconds}s ...")
+            time.sleep(sleep_seconds)
+
+    if isinstance(last_exc, ValueError):
+        raise RuntimeError("API_INVALID_JSON") from last_exc
+    if isinstance(last_exc, RuntimeError) and str(last_exc) == "STAT_NOT_OK":
+        raise RuntimeError("STAT_NOT_OK") from last_exc
+    raise RuntimeError("API_CONNECTION_FAILED") from last_exc
+
+
 def fetch_institutional(date: datetime.date) -> dict[str, Any]:
     """Fetch institutional data for a single trading date.
 
@@ -143,20 +225,7 @@ def fetch_institutional(date: datetime.date) -> dict[str, Any]:
     compact = _compact_date(date)
     source_url = _build_source_url(compact)
 
-    try:
-        response = requests.get(source_url, timeout=_API_TIMEOUT_SECONDS)
-        response.raise_for_status()
-        response_data = response.json()
-    except requests.RequestException as exc:
-        raise RuntimeError("API_CONNECTION_FAILED") from exc
-    except ValueError as exc:
-        raise RuntimeError("API_INVALID_JSON") from exc
-
-    if not isinstance(response_data, dict):
-        raise RuntimeError("API_INVALID_RESPONSE")
-
-    if response_data.get("stat") != "OK":
-        raise RuntimeError("STAT_NOT_OK")
+    response_data = _fetch_with_retry(source_url)
 
     fetch_date = _format_date(date)
     fetch_timestamp = datetime.datetime.now().isoformat()
@@ -294,15 +363,20 @@ def main(backfill_days: int = 0) -> int:
         result = fetch_institutional(today)
     except RuntimeError as exc:
         code = str(exc)
+        detail = f" ({exc.__cause__})" if exc.__cause__ is not None else ""
         if code == "SKIP":
             print("SKIP: 今日非交易日")
             return 0
         if code == "API_CONNECTION_FAILED":
-            print("ERROR: API 連線失敗")
+            print(f"ERROR: API 連線失敗{detail}")
+        elif code == "STAT_NOT_OK":
+            print("ERROR: TWSE 資料尚未就緒（stat 不為 OK）")
         elif code == "TOO_FEW_RECORDS":
             print("ERROR: 數據異常，記錄數過少")
+        elif code == "API_INVALID_JSON":
+            print(f"ERROR: API 回傳非有效 JSON{detail}")
         else:
-            print(f"ERROR: {code}")
+            print(f"ERROR: {code}{detail}")
         return 1
 
     output_path = _write_raw_file(today, result)
