@@ -2,7 +2,7 @@ name: 20 Manager Loop
 
 on:
   workflow_run:
-    workflows: ["10 Screener Setup A"]
+    workflows: ["10 Screener Setup A", "11 Screener Setup B", "12 Screener Setup C"]
     types: [completed]
   workflow_dispatch:
 
