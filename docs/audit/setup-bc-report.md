@@ -304,7 +304,17 @@ Because all branches are now merged, `spec.md`/`system-map.md` from `docs/setup-
 | 1 | Final merge `docs/setup-bc-finalize` conflicts with `spec/setup-bc-lock` in `spec.md` and `system-map.md`. | — | ✅ Resolved by adopting `docs/setup-bc-finalize` version |
 | 2 | Four legacy oracle fixtures (`oracle_setup_b_input/output_2026-08-01.json`, `oracle_setup_c_input/output_2026-08-01.json`) are present but never used by tests. | Low | Dead files; recommend deletion or adding tests |
 | 3 | `README.md` claims Setup B/C value-based guardrails (`trust_10d_buy_days ≥ 7`, `foreign_20d_net < 0`, etc.) are enforced by Audit Action, but `scripts/audit/audit_issue.py` only checks field presence, not values. | Medium | Docs-vs-code gap |
-| 4 | Workflows `11-screener-setup-b.yml` and `12-screener-setup-c.yml` invoke `create_issues.py` for Setup B/C screener results, but `scripts/screener/create_issues.py` only supports Setup A. | Medium | Workflow-vs-code gap; will fail at runtime |
+| 4 | Workflows `11-screener-setup-b.yml` and `12-screener-setup-c.yml` invoke `create_issues.py` for Setup B/C screener results, but `scripts/screener/create_issues.py` only supports Setup A. | Medium | ✅ Fixed: `create_issues.py` now detects setup type from filename/payload and creates Setup B/C issues with correct labels and bodies. |
+
+### 5.1 Post-Fix Notes
+
+After the audit report was first written, `scripts/screener/create_issues.py` was extended to support Setup B/C. The fix:
+- Detects setup type from filename (`screener_result_a_/b_/c_`) or payload keys (`candidates`/`setup_b_candidates`/`setup_c_candidates`).
+- Reuses `_build_issue_body` from `scripts/screener/setup_b.py` and `scripts/screener/setup_c.py`.
+- Creates issues with correct titles (`[Setup-B][YYYYMMDD] ...` / `[Setup-C][YYYYMMDD] ...`) and labels (`setup-b,screened` / `setup-c,screened`).
+- Added 8 tests in `tests/test_create_issues.py` covering Setup B/C creation, detection, and regression for Setup A.
+
+Full test suite after fix: **122 passed in 0.63s**.
 | 5 | `20-manager-loop.yml` now listens to all three screeners, but `scripts/manager/manager_loop.py` has no date/run_id de-duplication. This matches the warning in `spec.md` / `system-map.md` 7.9. | Medium | Known risk; needs follow-up decision |
 
 ---
@@ -317,8 +327,8 @@ The `integration/setup-bc` branch successfully merged all target branches. Confl
 
 ### Recommended Stage 5 Review Items
 
-1. Confirm docs-vs-code discrepancies are acceptable or schedule follow-up PRs:
+1. Confirm remaining docs-vs-code discrepancies are acceptable or schedule follow-up PRs:
    - Remove or use the four unused legacy oracle fixtures.
    - Implement or remove the Setup B/C value-based guardrail claims in `README.md`.
-   - Extend `scripts/screener/create_issues.py` to support Setup B/C Issue creation.
    - Decide on Manager Loop de-duplication strategy.
+2. Review the `create_issues.py` Setup B/C extension added after the initial audit.
