@@ -4,7 +4,8 @@ import json
 import os
 from unittest.mock import MagicMock, patch
 
-from requests import HTTPError
+import pytest
+import requests
 
 from tests.conftest import TEST_DATE_MONDAY, make_mock_get, make_twse_response
 
@@ -18,7 +19,7 @@ def _make_api_always_fail():
 
     def _get(url, *args, **kwargs):
         mock = MagicMock()
-        mock.raise_for_status.side_effect = HTTPError(
+        mock.raise_for_status.side_effect = requests.HTTPError(
             f"Mock API failure for {url}"
         )
         return mock
@@ -212,3 +213,98 @@ def test_backfill_fails_when_existing_data_is_stale(
         exit_code = fetch_module.main(backfill_days=5)
 
     assert exit_code == 1
+
+
+def test_fetch_institutional_retries_connection_failure_then_succeeds(
+    fetch_module, tmp_path, monkeypatch, patch_module_today
+):
+    """Transient timeouts are retried and the third attempt succeeds."""
+    raw_dir = tmp_path / "raw"
+    monkeypatch.setattr(fetch_module, "_RAW_OUTPUT_DIR", str(raw_dir))
+
+    call_count = 0
+
+    def mock_get(url, *args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count < 3:
+            raise requests.Timeout(f"timeout #{call_count}")
+        mock = MagicMock()
+        mock.status_code = 200
+        mock.json.return_value = make_twse_response()
+        mock.raise_for_status.return_value = None
+        return mock
+
+    with patch_module_today(fetch_module, TEST_DATE_MONDAY), patch.object(
+        fetch_module.requests, "get", mock_get
+    ):
+        exit_code = fetch_module.main(backfill_days=1)
+
+    assert exit_code == 0
+    assert call_count == 3
+    assert _raw_files(str(raw_dir)) == ["20260803.json"]
+
+
+def test_fetch_institutional_exhausted_retries_raise_connection_failed(
+    fetch_module, patch_module_today
+):
+    """After exhausting retries, a persistent connection error raises API_CONNECTION_FAILED."""
+    with patch_module_today(fetch_module, TEST_DATE_MONDAY), patch.object(
+        fetch_module.requests, "get", side_effect=requests.ConnectionError("always fails")
+    ):
+        with pytest.raises(RuntimeError, match="API_CONNECTION_FAILED"):
+            fetch_module.fetch_institutional(TEST_DATE_MONDAY)
+
+
+def test_fetch_institutional_retries_stat_not_ok_then_succeeds(
+    fetch_module, tmp_path, monkeypatch, patch_module_today
+):
+    """A TWSE stat != OK response is retried; the next OK response succeeds."""
+    raw_dir = tmp_path / "raw"
+    monkeypatch.setattr(fetch_module, "_RAW_OUTPUT_DIR", str(raw_dir))
+
+    responses = [
+        {"stat": "查無資料", "fields": [], "data": []},
+        make_twse_response(),
+    ]
+
+    def mock_get(url, *args, **kwargs):
+        data = responses.pop(0)
+        mock = MagicMock()
+        mock.status_code = 200
+        mock.json.return_value = data
+        mock.raise_for_status.return_value = None
+        return mock
+
+    with patch_module_today(fetch_module, TEST_DATE_MONDAY), patch.object(
+        fetch_module.requests, "get", mock_get
+    ):
+        exit_code = fetch_module.main(backfill_days=1)
+
+    assert exit_code == 0
+    assert _raw_files(str(raw_dir)) == ["20260803.json"]
+
+
+def test_fetch_institutional_sends_browser_user_agent(
+    fetch_module, patch_module_today
+):
+    """The fetch sends a browser-like User-Agent and Accept headers."""
+    captured = {}
+
+    def mock_get(url, *args, **kwargs):
+        captured["headers"] = kwargs.get("headers")
+        mock = MagicMock()
+        mock.status_code = 200
+        mock.json.return_value = make_twse_response()
+        mock.raise_for_status.return_value = None
+        return mock
+
+    with patch_module_today(fetch_module, TEST_DATE_MONDAY), patch.object(
+        fetch_module.requests, "get", mock_get
+    ):
+        fetch_module.fetch_institutional(TEST_DATE_MONDAY)
+
+    assert captured["headers"] is not None
+    assert "User-Agent" in captured["headers"]
+    assert "Mozilla" in captured["headers"]["User-Agent"]
+    assert "Accept" in captured["headers"]

@@ -155,3 +155,9 @@ def patch_module_today():
         return patch.object(module, "datetime", fake_datetime_module(date))
 
     return _patch
+
+
+@pytest.fixture(autouse=True)
+def disable_fetch_retry_delay(fetch_module, monkeypatch):
+    """Set fetch retry backoff to 0 so tests run instantly."""
+    monkeypatch.setattr(fetch_module, "_RETRY_BACKOFF_BASE_SECONDS", 0)
