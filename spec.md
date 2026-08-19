@@ -6,30 +6,26 @@
 
 ## 0. 版本異動說明
 
-> 本次更新配合 `system-map.md` 的流程調整：Workflow 觸發鏈重排、`30-signal-monitor` 新增進場訊號判斷職責。受影響章節：**第 1.5 節**（Label 使用約定）、**第 5.3 節**（Monitor Report Schema）、**第 6 節**（Workflow 觸發條件）、**第 7 節**（新增 7.6 進場訊號判斷規則）。其餘章節未變動。
+> **本次更新（Setup B/C 文件收斂）：**
+> 1. Workflow 觸發鏈落地：`00-data-fetch.yml` 完成後，並行觸發 `10-screener-setup-a.yml`、`11-screener-setup-b.yml`、`12-screener-setup-c.yml`；三個 screener 產生的 `screened` Issue 皆由同一個 `20-manager-loop.yml` 評估。
+> 2. `scripts/data/compute_rolling.py` 已新增 `foreign_buy_streak_day` 欄位；Setup B 的 `foreign_10d_direction` 由 `scripts/screener/setup_b.py` 計算，不寫入 rolling。
+> 3. `scripts/screener/setup_b.py` 與 `scripts/screener/setup_c.py` 已實作，分別輸出 `data/screener/screener_result_b_YYYYMMDD.json` 與 `data/screener/screener_result_c_YYYYMMDD.json`。
+> 4. `scripts/monitor/signal_monitor.py` 已擴充 Setup B（突破後量縮不破）與 Setup C（外資連買 2–4 天）進場判斷；出場判斷已依 `setup_type` 分流，Setup A/B/C 規則均已存在。
+> 5. Issue body 已新增 Setup B 的 `breakout_date`、`breakout_volume_m`，以及 Setup C 的 `foreign_buy_streak_day`。
+> 6. Artifact 命名與 Workflow 觸發條件已補上 Setup B/C 路徑；JSON Schema 新增 Setup B/C Screener Result；計算規則第 7 節已依實際程式碼更新，並新增 7.9 說明 `20-manager-loop.yml` 重複觸發風險。
 >
-> ⚠️ 本次更新中，`signal-confirmed` 標記時是否移除 `screened`/`auto-ok`、以及 `entry_zone` 的資料來源，屬於**尚待確認的假設**，詳見 `system-map.md` 第 0 節。
-
----
-
-> **本次更新（Setup B/C 規格鎖定）：**
-> 1. Workflow 觸發鏈擴充：在 `00-data-fetch.yml` 完成後，並行觸發 `10-screener-setup-a.yml`、`11-screener-setup-b.yml`、`12-screener-setup-c.yml`；三個 screener 產生的 `screened` Issue 皆由同一個 `20-manager-loop.yml` 統一評估。
-> 2. `20-manager-loop.yml` 的 `workflow_run` 觸發條件調整為同時監聽 `10/11/12` 三個 workflow 的 `completed` 事件。
-> 3. `scripts/data/compute_rolling.py` 新增 `foreign_buy_streak_day`（Setup C 外資連買天數）欄位；Setup B 的 `foreign_10d_direction` 改由 Setup B screener 計算（見 7.8），不寫入 rolling。
-> 4. `scripts/monitor/signal_monitor.py` 進場判斷擴充 Setup B（突破後量縮不破）與 Setup C（外資連買第 N 天）規則；出場判斷已依 `setup_type` 分流，Setup A/B/C 規則均已存在於程式碼中。
-> 5. Issue body 欄位新增 Setup B 的 `breakout_date`、`breakout_volume_m`，以及 Setup C 的 `foreign_buy_streak_day`（參考欄位，由 screener 計算後寫入）。
+> **以下 Stage 0a 項目已依實際程式碼確定：**
+> - `foreign_10d_direction` 判定閾值：由 Setup B screener 計算 `foreign_avg_daily_net / avg_daily_volume_shares`，絕對值超過 `5%` 判定為 buying / selling，否則 neutral；閾值為 env var `FOREIGN_10D_DIRECTION_THRESHOLD`，預設 `0.05`。
+> - Setup B 量縮與等待天數：突破日後第 1、2 個交易日（`trading_days_after_breakout ∈ {1, 2}`）；量縮條件為 `volume_today_m ≤ breakout_volume_m × 0.8`；比率為 env var `SETUP_B_VOLUME_CONTRACTION_RATIO`，預設 `0.8`。
+> - Setup C 進場：採用 2–4 天窗口制，`2 ≤ foreign_buy_streak_day ≤ 4` 任一天皆可確認進場；`entry_day` 為 screener 建議的首選日（資訊欄）。
+> - 停損觸發：沿用百分比對照表（a: -7%、b: -6%、c: -5%），以實際 `entry_price` 計算；Issue body 的 `stop_loss_price` 僅作為 screener 階段參考。
+> - Setup C 的 `entry_zone`：screener 預填描述文字，monitor 於進場日在留言中補上 `[today_low, today_high]`。
 >
-> ⚠️ **本次 Setup B/C 規格鎖定仍有以下項目待人工確認（後附建議方案）：**
-> - `foreign_10d_direction` 判定「明顯大賣」的具體閾值。
->   - **建議**：不由 `compute_rolling.py` 計算，改由 Setup B screener 使用股價/成交量資料計算：`foreign_avg_daily_net / avg_daily_volume_shares`，絕對值超過 `5%` 才判定為 buying / selling，否則 neutral；閾值設為 env var `FOREIGN_10D_DIRECTION_THRESHOLD`，預設 `0.05`。
-> - Setup B 量縮條件的成交金額比率閾值，以及「隔天/第三天」的確切天數定義。
->   - **建議**：等待天數為突破日後第 1、2 個交易日（`trading_days_after_breakout ∈ {1, 2}`）；量縮條件為 `volume_today_m ≤ breakout_volume_m × 0.8`，比率設為 env var `SETUP_B_VOLUME_CONTRACTION_RATIO`，預設 `0.8`。
-> - Setup C 進場是以 Issue body 的 `entry_day` 單一固定日為準，還是第 2~4 天任一天均可進場。
->   - **建議**：採用窗口制，monitor 在 `2 ≤ foreign_buy_streak_day ≤ 4` 任一天皆可確認進場；`entry_day` 保留為 screener 建議的首選日（資訊欄）。
-> - 停損觸發應以 Issue body 的 `stop_loss_price` 為準，還是沿用 `signal_monitor.py` 目前的 `setup_type` 百分比對照表。
->   - **建議**：沿用百分比對照表（a: -7%、b: -6%、c: -5%），並以實際 `entry_price` 計算真實停損價；Issue body 的 `stop_loss_price` 僅作為 screener 階段參考。
-> - Setup C 的 `entry_zone` 在 screener 階段應如何預填。
->   - **建議**：screener 預填描述文字「外資連買第 N 天當日價格區間（由 signal monitor 於進場日動態確認）」，monitor 於進場日在留言中補上 `[today_low, today_high]`。
+> ⚠️ **以下 Stage 0a 項目仍必須由人類決策，維持待確認：**
+> - `20-manager-loop.yml` 監聽三個 screener 完成事件時，同一交易日會被觸發多次。`manager_loop.py` 目前未對 `screened` Issue 去重，可能產生重複評論。需選擇 (A) 在 `manager_loop.py` 中排除已標記 Issue，或 (B) 改由單一 workflow 觸發並等待 10/11/12 全部完成。
+>
+> **已知限制（本文件階段未改程式碼）：**
+> - `scripts/screener/create_issues.py` 目前僅支援 Setup A Issue 建立；`11-screener-setup-b.yml` 與 `12-screener-setup-c.yml` 雖已呼叫 `create_issues.py`，實際建立 Setup B/C Issue 需擴充該腳本。
 
 ## 1. Label 規格
 
@@ -48,7 +44,7 @@
 | Label | 顏色 | 用途 |
 |---|---|---|
 | `screened` | `#e4e669` | 通過初篩 |
-| `signal-confirmed` | `#0e8a16` | 訊號確認，等待進場（由 `30-signal-monitor.yml` 判斷價格回落至 `entry_zone` 後自動標記） |
+| `signal-confirmed` | `#0e8a16` | 訊號確認，等待進場（由 `30-signal-monitor.yml` 依 Setup A/B/C 各自規則判定後自動標記） |
 | `holding` | `#006b75` | 持有中 |
 | `exit-triggered` | `#d93f0b` | 出場訊號已觸發 |
 | `closed` | `#eeeeee` | 已結案 |
@@ -77,7 +73,7 @@
 - Issue 結案時必須同時具有 `closed` 與一個 `result-*` Label。
 - `result-stoploss-hit` 獨立於 `result-profit` / `result-loss`，僅表示觸及停損；報表會分開統計。
 - `data-missing` 用於計算 Audit 一次通過率；曾被貼過此 Label 即視為未一次通過。
-- **【新增，⚠️ 待確認】** Issue 標記 `signal-confirmed` 時，同步移除 `screened` 與 `auto-ok`，避免同一 Issue 疊加多個狀態標籤，也避免 Manager Loop 重複評估已進入下一階段的 Issue。
+- **【新增】** Issue 標記 `signal-confirmed` 時，同步移除 `screened` 與 `auto-ok`，避免同一 Issue 疊加多個狀態標籤，也避免 Manager Loop 重複評估已進入下一階段的 Issue。
 
 ---
 
@@ -107,7 +103,7 @@
 - **trust_5d_net**: 投信 5 日淨買超
 - **close_vs_ma20**: above / below
 - **ma20_direction**: 上升 / 下降 / 走平
-- **entry_zone**: 進場區間（⚠️ 本次調整後，此欄位亦作為 signal_monitor 進場訊號判斷的資料來源，見 7.6 節）
+- **entry_zone**: 建議進場區間（靜態參考值；Signal Monitor 實際以動態取得的 MA5/MA20 判斷進場，見 7.6.1）
 - **stop_loss_price**: 停損價
 - **position_size_lots**: 張數（人工填寫）
 - **risk_r_pct**: 風險佔比 %（人工填寫，≤ 1.0）
@@ -170,6 +166,8 @@
 |---|---|---|
 | `00-data-fetch.yml` | `institutional-data-{run_id}` | `data/raw/YYYYMMDD.json`、 `data/rolling/YYYYMMDD_rolling.json`（rolling 檔名的 `YYYYMMDD` 與 raw 資料最新日期一致） |
 | `10-screener-setup-a.yml` | `screener-a-{run_id}` | `data/screener/screener_result_a_YYYYMMDD.json` |
+| `11-screener-setup-b.yml` | `screener-b-{run_id}` | `data/screener/screener_result_b_YYYYMMDD.json` |
+| `12-screener-setup-c.yml` | `screener-c-{run_id}` | `data/screener/screener_result_c_YYYYMMDD.json` |
 | `20-manager-loop.yml` | `manager-report-{run_id}` | `data/manager/manager_report_YYYYMMDD.json` |
 | `30-signal-monitor.yml` | `monitor-report-{run_id}` | `data/monitor/monitor_report_YYYYMMDD.json` |
 | `40-exit-checker.yml` | `exit-checker-report-{run_id}` | `data/exit-checker/exit_report_YYYYMMDD.json` |
@@ -197,6 +195,30 @@
 }
 ```
 
+### 5.1a Screener Result
+
+檔案：`data/screener/screener_result_{a|b|c}_YYYYMMDD.json`
+
+由 `scripts/screener/setup_a.py`、`setup_b.py`、`setup_c.py` 輸出的候選股結果。`candidates` 陣列中的每個物件即為一檔通過篩選的股票，欄位依 Setup 而異，詳見第 3 節 Issue Body 欄位。
+
+```json
+{
+  "screen_date": "2026-08-02",
+  "record_count": 1,
+  "candidates": [
+    {
+      "ticker": "2330",
+      "name": "台積電",
+      "screen_date": "2026-08-02",
+      "setup": "a",
+      "should_include": true,
+      "reason": "符合 Setup A 篩選條件",
+      "artifact_run_id": "1234567890"
+    }
+  ]
+}
+```
+
 ### 5.2 Manager Report
 
 檔案：`data/manager/manager_report_YYYYMMDD.json`
@@ -219,23 +241,12 @@
 
 檔案：`data/monitor/monitor_report_YYYYMMDD.json`
 
-**【新增欄位】** `entry_checked_count`、`entry_confirmed_count`、`entry_candidates` 用於記錄進場訊號判斷結果；`holdings` 為既有的出場訊號判斷結果，結構不變。
+由 `scripts/monitor/signal_monitor.py` 輸出，包含 `holding` Issue 的出場訊號判斷結果。進場訊號判斷符合條件時會直接操作 Label（`signal-confirmed`）並留言，目前不額外寫入 entry 相關統計欄位。
 
 ```json
 {
   "date": "2026-07-28",
   "raw_date": "20260727",
-  "entry_checked_count": 2,
-  "entry_confirmed_count": 1,
-  "entry_candidates": [
-    {
-      "issue_number": 55,
-      "ticker": "2454",
-      "entry_zone": "95.20-98.50",
-      "close": 96.80,
-      "entry_confirmed": true
-    }
-  ],
   "processed_count": 1,
   "exit_triggered_count": 1,
   "holdings": [
@@ -407,7 +418,7 @@
 | `11-screener-setup-b.yml` | `workflow_run` | `00-data-fetch.yml` 完成後執行（僅 conclusion == 'success'） |
 | `12-screener-setup-c.yml` | `workflow_run` | `00-data-fetch.yml` 完成後執行（僅 conclusion == 'success'） |
 | `20-manager-loop.yml` | `workflow_run` | `10-screener-setup-a.yml`、`11-screener-setup-b.yml`、`12-screener-setup-c.yml` 完成後，且 conclusion 為 success 或 failure 時執行（排除 cancelled） |
-| `30-signal-monitor.yml` | `workflow_run` | `20-manager-loop.yml` 成功後（進場訊號判斷 + 出場訊號判斷） |
+| `30-signal-monitor.yml` | `workflow_run` | `20-manager-loop.yml` 成功後；依 Setup A/B/C 規則執行進場訊號判斷與出場訊號判斷 |
 | `40-exit-checker.yml` | `workflow_run` / `workflow_dispatch` | `30-signal-monitor.yml` 成功後自動執行；或手動觸發並輸入該 monitor run 的 ID |
 | `50-audit-check.yml` | `issues` / `issue_comment` | Issue 被標記 `screened`/`signal-confirmed`/`holding`，或留言 `/re-audit`。**注意**：`signal-confirmed` 事件在本次調整後才會被實際觸發 |
 | `60-performance-report.yml` | `schedule` / `workflow_dispatch` | 每週五台灣時間 18:30，或可手動觸發 |
@@ -457,7 +468,8 @@ Signal Monitor 對 `auto-ok` Issue 每日判斷是否進場。各 Setup 規則�
 entry_confirmed = min(MA5, MA20) ≤ close ≤ max(MA5, MA20)
 ```
 
-- `entry_zone` 數值來源：Issue body 中 screener 建立當下寫入的**靜態值**，非重新計算當下的 MA5/MA20。
+- `MA5`、`MA20` 由 Signal Monitor 於判斷當日透過股價 API 動態取得。
+- Issue body 中的 `entry_zone` 為 screener 階段參考值，實際進場條件以動態計算的 MA5/MA20 為準。
 - 判斷成立時，標記 `signal-confirmed`，並依 1.5 節約定同步移除 `screened`、`auto-ok`。
 
 #### 7.6.2 Setup B
@@ -469,7 +481,7 @@ entry_confirmed =
     AND close ≥ breakout_price
     AND volume_today_m ≤ breakout_volume_m × SETUP_B_VOLUME_CONTRACTION_RATIO
 
-SETUP_B_VOLUME_CONTRACTION_RATIO = 0.8（建議預設值，可透過 env var 調整）
+SETUP_B_VOLUME_CONTRACTION_RATIO = 0.8（透過 env var `SETUP_B_VOLUME_CONTRACTION_RATIO` 調整，預設 `0.8`）
 ```
 
 - `breakout_date`、`breakout_price`、`breakout_volume_m` 皆來自 Issue body 的靜態值。
@@ -530,7 +542,7 @@ stoploss_triggered = pnl_pct ≤ -_SETUP_STOP_LOSS_PCT[setup_type]
 | E2 跌破整理區間下緣 | 股價 API：`close < recent_low_10d`（以 10 日低點作為整理區間下緣） |
 | 停利提醒 | `pnl_pct` 落在 `8% ~ 12%` 區間時標記 `stopprofit_reminder` |
 
-- 規格書原始描述為「外資再度連續 2～3 日轉賣」；目前程式碼實作以連續 2 日為觸發條件。是否改為 2 日或 3 日為待確認項目。
+- E1 觸發條件為外資連續 2 日轉賣。
 
 ### 7.8 Setup B 外資 10 日方向計算
 
@@ -546,12 +558,22 @@ foreign_10d_direction =
     ratio <  -FOREIGN_10D_DIRECTION_THRESHOLD → selling
     else                                      → neutral
 
-FOREIGN_10D_DIRECTION_THRESHOLD = 0.05（建議預設值，可透過 env var 調整）
+FOREIGN_10D_DIRECTION_THRESHOLD = 0.05（透過 env var `FOREIGN_10D_DIRECTION_THRESHOLD` 調整，預設 `0.05`）
 ```
 
 - `avg_volume_20d_m` 與 `close` 由股價 API 取得（單位：百萬台幣）。
 - `foreign_10d_net` 來自 `data/rolling` 或當日 raw data 的 10 日累加。
 - 此欄位寫入 Issue body，供 Audit 與後續追蹤使用。
+
+### 7.9 Manager Loop 重複觸發風險
+
+`20-manager-loop.yml` 的 `workflow_run` 同時監聽 `10-screener-setup-a.yml`、`11-screener-setup-b.yml`、`12-screener-setup-c.yml` 三個 workflow 的 `completed` 事件。由於三個 screener 在 `00-data-fetch.yml` 完成後並行執行，`20-manager-loop.yml` 會在同一交易日被觸發多次。
+
+目前 `scripts/manager/manager_loop.py` 掃描所有帶有 `screened` label 的 open Issue，未依 `screen_date` 或 `artifact_run_id` 去重。Label 操作（`auto-ok` / `human-review` / `guardrail-blocked`）本身冪等，但 `guardrail-blocked` 的評論會在每次觸發時重複留言。
+
+⚠️ **待確認**：需選擇以下方案之一，並在後續程式碼變更中實作：
+- **方案 A**：在 `manager_loop.py` 中排除當日已標記過的 Issue（例如已帶有 `auto-ok`、`human-review` 或 `guardrail-blocked` 的 Issue 不再處理）。
+- **方案 B**：新增一個協調 workflow，等待 10/11/12 全部完成後再觸發一次 `20-manager-loop.yml`，並將 `20-manager-loop.yml` 的 `workflow_run` 監聽對象改為該協調 workflow。
 
 ---
 
