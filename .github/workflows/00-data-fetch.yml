@@ -81,8 +81,8 @@ jobs:
             echo "First run, backfilling 25 days"
             python scripts/data/fetch_institutional.py --backfill-days 25
           else
-            echo "Restoring from previous artifact, fetching today only"
-            python scripts/data/fetch_institutional.py --backfill-days 0
+            echo "Restoring from previous artifact, backfilling up to 5 days"
+            python scripts/data/fetch_institutional.py --backfill-days 5
           fi
 
       - name: Step 3 - Compute rolling metrics

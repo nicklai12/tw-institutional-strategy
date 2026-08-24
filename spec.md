@@ -412,7 +412,7 @@
 
 | Workflow | 觸發條件 | 說明 |
 |---|---|---|
-| `00-data-fetch.yml` | `schedule` | 每個交易日收盤後約 18:30 TW；首次執行補抓 25 日，之後透過 named-artifact 還原前次 artifact 到 `data/` 並只抓當日；若當日資料無法取得或最新 raw 資料已超過 7 天，fetch 會 exit 1，但仍透過 `if: always()` 上傳 artifact |
+| `00-data-fetch.yml` | `schedule` | 每個交易日收盤後約 18:30 TW；首次執行補抓 25 日，之後透過 named-artifact 還原前次 artifact 到 `data/` 並補抓最近 5 個交易日；若當日資料無法取得或最新 raw 資料已超過 7 天，fetch 會 exit 1，但仍透過 `if: always()` 上傳 artifact |
 | `10-screener-setup-a.yml` | `workflow_run` | `00-data-fetch.yml` 完成後執行（僅 conclusion == 'success'） |
 | `11-screener-setup-b.yml` | `workflow_run` | `00-data-fetch.yml` 完成後執行（僅 conclusion == 'success'） |
 | `12-screener-setup-c.yml` | `workflow_run` | `00-data-fetch.yml` 完成後執行（僅 conclusion == 'success'） |
