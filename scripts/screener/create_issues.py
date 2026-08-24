@@ -204,7 +204,7 @@ def create_issue(
 def main() -> int:
     """Entry point. Returns shell exit code."""
     if len(sys.argv) < 2:
-        print("Usage: python create_issues.py <screener_result_*.json>")
+        print("Usage: python -m scripts.screener.create_issues <screener_result_*.json>")
         return 1
 
     result_path = sys.argv[1]

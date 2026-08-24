@@ -65,7 +65,7 @@ jobs:
           MIN_AVG_VOLUME_M: ${{ vars.MIN_AVG_VOLUME_M || '500' }}
           MAX_CANDIDATES_PER_RUN: ${{ vars.MAX_CANDIDATES_PER_RUN || '5' }}
         run: |
-          python scripts/screener/setup_a.py
+          python -m scripts.screener.setup_a
 
       - name: Step 3 - Create GitHub Issues
         env:
@@ -73,7 +73,7 @@ jobs:
           GH_PROJECT_NUMBER: ${{ vars.GH_PROJECT_NUMBER }}
           GITHUB_RUN_ID: ${{ github.run_id }}
         run: |
-          python scripts/screener/create_issues.py data/screener/screener_result_a_*.json
+          python -m scripts.screener.create_issues data/screener/screener_result_a_*.json
 
       - name: Step 4 - Upload screener artifacts
         uses: actions/upload-artifact@v4
