@@ -98,7 +98,7 @@ graph TD
 
 | 檔案 | 觸發 | 職責 |
 |---|---|---|
-| `00-data-fetch.yml` | `schedule` 每日收盤後 | 還原前次 artifact，首次執行補抓 25 日、之後只抓當日；執行 data scripts；不論 fetch 是否因跳過日期而 exit 1，皆上傳 institutional-data artifact（if: always()） |
+| `00-data-fetch.yml` | `schedule` 每日收盤後 | 還原前次 artifact，首次執行補抓 25 日、之後補抓最近 5 個交易日；執行 data scripts；不論 fetch 是否因跳過日期而 exit 1，皆上傳 institutional-data artifact（if: always()） |
 | `10-screener-setup-a.yml` | `workflow_run` 於 `00-data-fetch.yml` 完成後 | 執行 Setup A screener 並建立 Issues（labels: `setup-a`, `screened`） |
 | `11-screener-setup-b.yml` | `workflow_run` 於 `00-data-fetch.yml` 完成後 | 執行 Setup B screener 並建立 Issues（labels: `setup-b`, `screened`） |
 | `12-screener-setup-c.yml` | `workflow_run` 於 `00-data-fetch.yml` 完成後 | 執行 Setup C screener 並建立 Issues（labels: `setup-c`, `screened`） |
