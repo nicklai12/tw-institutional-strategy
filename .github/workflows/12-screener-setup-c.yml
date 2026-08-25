@@ -13,6 +13,9 @@ jobs:
       data_fetch_run_id: ${{ github.event.workflow_run.id }}
 
   screener-setup-c:
+    # 暫時停用 Setup C screener，避免 TWSE 股價 API 大量呼叫導致逾時
+    # 見 https://github.com/nicklai12/tw-institutional-strategy/issues/99
+    if: false
     runs-on: ubuntu-latest
     needs: guardrail
     permissions:
