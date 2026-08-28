@@ -1,0 +1,52 @@
+{
+  "report_year": 2026,
+  "report_week": 35,
+  "report_date": "2026-08-29",
+  "generated_at": "2026-08-29T05:12:52.110063+08:00",
+  "system_health": {
+    "total_screened_this_week": 6,
+    "audit_pass_rate": 1.0,
+    "guardrail_triggered_count": 0,
+    "human_review_count": 0
+  },
+  "strategy_performance": {
+    "setup_a": {
+      "closed_count": 0,
+      "win_count": 0,
+      "lose_count": 0,
+      "stoploss_count": 0,
+      "win_rate": 0.0
+    },
+    "setup_b": {
+      "closed_count": 0,
+      "win_count": 0,
+      "lose_count": 0,
+      "stoploss_count": 0,
+      "win_rate": 0.0
+    },
+    "setup_c": {
+      "closed_count": 0,
+      "win_count": 0,
+      "lose_count": 0,
+      "stoploss_count": 0,
+      "win_rate": 0.0
+    }
+  },
+  "current_holdings": {
+    "total": 1,
+    "by_setup": {
+      "a": 1,
+      "b": 0,
+      "c": 0
+    },
+    "holdings": [
+      {
+        "issue_number": 41,
+        "title": "[Setup-A][20260811] 2301 光寶科",
+        "setup": "a",
+        "days_held": null,
+        "pnl_pct": "11.69"
+      }
+    ]
+  }
+}
